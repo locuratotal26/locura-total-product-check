@@ -27,6 +27,126 @@ window.analizarConIA = (imagen, codigo = '') =>
     body: { image: imagen, barcode: codigo }
   });
 
+window.buscarProductoWeb = () =>
+  db.functions.invoke('buscar-producto-web', {
+    body: {
+      name: $('name').value,
+      brand: $('brand').value,
+      barcode: $('barcode').value
+    }
+  });
+
+const panelWeb = document.createElement('div');
+panelWeb.className = 'panel';
+panelWeb.innerHTML = `
+  <h2>🌐 Información del producto en Internet</h2>
+  <p>Busca fabricante, modelo, características,
+     peso y precios orientativos.</p>
+  <button type="button" id="consultarWeb">
+    Buscar información en Internet
+  </button>
+  <p id="resultadoWeb"></p>
+  <div id="fuentesWeb"></div>
+`;
+
+$('productForm').after(panelWeb);
+
+$('consultarWeb').onclick = async () => {
+  const boton = $('consultarWeb');
+  const resultado = $('resultadoWeb');
+  const fuentes = $('fuentesWeb');
+
+  if (!$('name').value.trim() &&
+      !$('brand').value.trim() &&
+      !$('barcode').value.trim()) {
+    resultado.textContent =
+      'Primero indica un producto, marca o EAN.';
+    return;
+  }
+
+  boton.disabled = true;
+  resultado.textContent = 'Buscando información...';
+  fuentes.replaceChildren();
+
+  try {
+    const { data, error } = await window.buscarProductoWeb();
+
+    if (error || !data?.product) {
+      throw new Error(error?.message ||
+        data?.error || 'No se encontraron datos');
+    }
+
+    const p = data.product;
+
+    resultado.textContent = [
+      'Nombre: ' + (p.name || 'Sin datos'),
+      'Marca: ' + (p.brand || 'Sin datos'),
+      'Modelo: ' + (p.model || 'Sin datos'),
+      'Fabricante: ' + (p.manufacturer || 'Sin datos'),
+      'Web fabricante: ' + (p.manufacturer_url || 'Sin datos'),
+      'Peso (kg): ' + (p.weight_kg ?? 'Sin datos'),
+      'Características: ' + (p.features || 'Sin datos'),
+      'Precio orientativo: ' +
+        (p.market_price_eur == null
+          ? 'Sin datos'
+          : p.market_price_eur + ' €'),
+      'Observaciones: ' + (p.warnings || 'Ninguna')
+    ].join('\n');
+
+    resultado.style.whiteSpace = 'pre-wrap';
+
+    for (const fuente of data.sources || []) {
+      try {
+        const url = new URL(fuente.url);
+        if (url.protocol !== 'https:') continue;
+
+        const enlace = document.createElement('a');
+        enlace.href = url.href;
+        enlace.target = '_blank';
+        enlace.rel = 'noopener noreferrer';
+        enlace.textContent = fuente.title || url.hostname;
+
+        const linea = document.createElement('p');
+        linea.appendChild(enlace);
+        fuentes.appendChild(linea);
+      } catch {}
+    }
+
+    if (confirm('¿Añadir los datos encontrados a la ficha?')) {
+      for (const [id, valor] of Object.entries({
+        name: p.name,
+        brand: p.brand,
+        manufacturer: p.manufacturer,
+        barcode: p.barcode,
+        weight: p.weight_kg
+      })) {
+        const campo = $(id);
+        if (campo && !campo.value && valor != null) {
+          campo.value = String(valor);
+        }
+      }
+
+      const detalle = [
+        p.model ? 'Modelo: ' + p.model : '',
+        p.features
+      ].filter(Boolean).join('\n');
+
+      if (detalle) {
+        $('features').value = [
+          $('features').value,
+          'Datos web pendientes de verificar:',
+          detalle
+        ].filter(Boolean).join('\n');
+      }
+    }
+
+  } catch (error) {
+    resultado.textContent = 'Error: ' + error.message;
+  } finally {
+    boton.disabled = false;
+  }
+};
+
 const message=(t,error=false)=>{const el=$('message');el.textContent=t;el.classList.toggle('danger',error)};
 const loginMessage=(t,error=false)=>{const el=$('loginMessage');el.textContent=t;el.classList.toggle('danger',error)};
 const value=id=>$(id).value.trim();
