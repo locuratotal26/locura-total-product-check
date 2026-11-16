@@ -49,4 +49,635 @@ $('export').onclick=()=>{const blob=new Blob([JSON.stringify(products,null,2)],{
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{showSession(session).catch(e=>message(errText(e),true))},0)});
 const {data,error}=await db.auth.getSession();if(error)loginMessage(errText(error),true);else await showSession(data.session);
 });
+</script>
+<script>
+(() => {
+  function iniciarFoto() {
+    const foto = document.getElementById('photo');
+    if (!foto || document.getElementById('buscadorFotoLocura')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'buscadorFotoLocura';
+    panel.style = 'margin:14px 0;padding:14px;border:1px solid #f244b3;border-radius:12px';
+
+    panel.innerHTML = `
+      <strong>📸 Buscar producto por fotografía</strong>
+      <p>Selecciona una fotografía de la caja, etiqueta o producto.</p>
+      <button type="button" id="analizarFotoLocura">Analizar esta foto</button>
+      <p id="resultadoFotoLocura" role="status"></p>
+      <label for="textoFotoLocura">Marca, modelo o código detectado</label>
+      <input id="textoFotoLocura" placeholder="Puedes corregir el texto">
+      <button type="button" id="buscarWebLocura">Buscar en Internet</button>
+      <a href="https://lens.google.com/" target="_blank"
+         rel="noopener noreferrer" style="display:inline-block;margin:12px">
+         Buscar imagen en Google Lens
+      </a>
+    `;
+
+    foto.insertAdjacentElement('afterend', panel);
+
+    const resultado = document.getElementById('resultadoFotoLocura');
+    const texto = document.getElementById('textoFotoLocura');
+    const boton = document.getElementById('analizarFotoLocura');
+
+    document.getElementById('buscarWebLocura').onclick = () => {
+      const q = texto.value.trim();
+      if (!q) {
+        resultado.textContent = 'Primero introduce una marca o modelo.';
+        return;
+      }
+      window.open(
+        'https://www.google.com/search?q=' +
+        encodeURIComponent(q + ' producto fabricante ficha técnica'),
+        '_blank', 'noopener'
+      );
+    };
+
+    boton.onclick = async () => {
+      const archivo = foto.files && foto.files[0];
+      if (!archivo) {
+        resultado.textContent = 'Primero selecciona una fotografía.';
+        return;
+      }
+
+      boton.disabled = true;
+      resultado.textContent = 'Analizando fotografía...';
+      let codigo = '';
+      let letras = '';
+
+      try {
+        if ('BarcodeDetector' in window) {
+          const disponibles = await BarcodeDetector.getSupportedFormats();
+          const formatos = ['ean_13','ean_8','upc_a','upc_e','code_128']
+            .filter(x => disponibles.includes(x));
+
+          if (formatos.length) {
+            const imagen = await createImageBitmap(archivo);
+            try {
+              const encontrados =
+                await new BarcodeDetector({formats: formatos}).detect(imagen);
+              codigo = encontrados.find(x => x.rawValue)?.rawValue || '';
+            } finally {
+              imagen.close();
+            }
+          }
+        }
+      } catch (e) {
+        // Algunos navegadores no admiten esta función.
+      }
+
+      try {
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src =
+              'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        try {
+          const r = await worker.recognize(archivo);
+          letras = (r.data.text || '').trim();
+        } finally {
+          await worker.terminate();
+        }
+      } catch (e) {
+        resultado.textContent = 'No se pudo leer el texto de la imagen.';
+      }
+
+      const lineas = letras.split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 2);
+
+      texto.value = [codigo, ...lineas.slice(0, 4)]
+        .filter(Boolean).join(' ').slice(0, 180);
+
+      if (codigo) {
+        const manual = document.getElementById('manualCode');
+        const ficha = document.getElementById('barcode');
+        if (manual) manual.value = codigo;
+        if (ficha) ficha.value = codigo;
+      }
+
+      resultado.textContent = codigo
+        ? 'Código encontrado: ' + codigo + '. Revisa los datos.'
+        : lineas.length
+          ? 'Texto detectado. Revisa la marca y el modelo.'
+          : 'No se detectaron datos fiables. Prueba otra foto o Google Lens.';
+
+      boton.disabled = false;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarFoto);
+  } else {
+    iniciarFoto();
+  }
+})();
+</script>
+<script>
+(() => {
+  function iniciarFoto() {
+    const foto = document.getElementById('photo');
+    if (!foto || document.getElementById('buscadorFotoLocura')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'buscadorFotoLocura';
+    panel.style = 'margin:14px 0;padding:14px;border:1px solid #f244b3;border-radius:12px';
+
+    panel.innerHTML = `
+      <strong>📸 Buscar producto por fotografía</strong>
+      <p>Selecciona una fotografía de la caja, etiqueta o producto.</p>
+      <button type="button" id="analizarFotoLocura">Analizar esta foto</button>
+      <p id="resultadoFotoLocura" role="status"></p>
+      <label for="textoFotoLocura">Marca, modelo o código detectado</label>
+      <input id="textoFotoLocura" placeholder="Puedes corregir el texto">
+      <button type="button" id="buscarWebLocura">Buscar en Internet</button>
+      <a href="https://lens.google.com/" target="_blank"
+         rel="noopener noreferrer" style="display:inline-block;margin:12px">
+         Buscar imagen en Google Lens
+      </a>
+    `;
+
+    foto.insertAdjacentElement('afterend', panel);
+
+    const resultado = document.getElementById('resultadoFotoLocura');
+    const texto = document.getElementById('textoFotoLocura');
+    const boton = document.getElementById('analizarFotoLocura');
+
+    document.getElementById('buscarWebLocura').onclick = () => {
+      const q = texto.value.trim();
+      if (!q) {
+        resultado.textContent = 'Primero introduce una marca o modelo.';
+        return;
+      }
+      window.open(
+        'https://www.google.com/search?q=' +
+        encodeURIComponent(q + ' producto fabricante ficha técnica'),
+        '_blank', 'noopener'
+      );
+    };
+
+    boton.onclick = async () => {
+      const archivo = foto.files && foto.files[0];
+      if (!archivo) {
+        resultado.textContent = 'Primero selecciona una fotografía.';
+        return;
+      }
+
+      boton.disabled = true;
+      resultado.textContent = 'Analizando fotografía...';
+      let codigo = '';
+      let letras = '';
+
+      try {
+        if ('BarcodeDetector' in window) {
+          const disponibles = await BarcodeDetector.getSupportedFormats();
+          const formatos = ['ean_13','ean_8','upc_a','upc_e','code_128']
+            .filter(x => disponibles.includes(x));
+
+          if (formatos.length) {
+            const imagen = await createImageBitmap(archivo);
+            try {
+              const encontrados =
+                await new BarcodeDetector({formats: formatos}).detect(imagen);
+              codigo = encontrados.find(x => x.rawValue)?.rawValue || '';
+            } finally {
+              imagen.close();
+            }
+          }
+        }
+      } catch (e) {
+        // Algunos navegadores no admiten esta función.
+      }
+
+      try {
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src =
+              'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        try {
+          const r = await worker.recognize(archivo);
+          letras = (r.data.text || '').trim();
+        } finally {
+          await worker.terminate();
+        }
+      } catch (e) {
+        resultado.textContent = 'No se pudo leer el texto de la imagen.';
+      }
+
+      const lineas = letras.split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 2);
+
+      texto.value = [codigo, ...lineas.slice(0, 4)]
+        .filter(Boolean).join(' ').slice(0, 180);
+
+      if (codigo) {
+        const manual = document.getElementById('manualCode');
+        const ficha = document.getElementById('barcode');
+        if (manual) manual.value = codigo;
+        if (ficha) ficha.value = codigo;
+      }
+
+      resultado.textContent = codigo
+        ? 'Código encontrado: ' + codigo + '. Revisa los datos.'
+        : lineas.length
+          ? 'Texto detectado. Revisa la marca y el modelo.'
+          : 'No se detectaron datos fiables. Prueba otra foto o Google Lens.';
+
+      boton.disabled = false;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarFoto);
+  } else {
+    iniciarFoto();
+  }
+})();
+</script>
+<script>
+(() => {
+  function iniciarFoto() {
+    const foto = document.getElementById('photo');
+    if (!foto || document.getElementById('buscadorFotoLocura')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'buscadorFotoLocura';
+    panel.style = 'margin:14px 0;padding:14px;border:1px solid #f244b3;border-radius:12px';
+
+    panel.innerHTML = `
+      <strong>📸 Buscar producto por fotografía</strong>
+      <p>Selecciona una fotografía de la caja, etiqueta o producto.</p>
+      <button type="button" id="analizarFotoLocura">Analizar esta foto</button>
+      <p id="resultadoFotoLocura" role="status"></p>
+      <label for="textoFotoLocura">Marca, modelo o código detectado</label>
+      <input id="textoFotoLocura" placeholder="Puedes corregir el texto">
+      <button type="button" id="buscarWebLocura">Buscar en Internet</button>
+      <a href="https://lens.google.com/" target="_blank"
+         rel="noopener noreferrer" style="display:inline-block;margin:12px">
+         Buscar imagen en Google Lens
+      </a>
+    `;
+
+    foto.insertAdjacentElement('afterend', panel);
+
+    const resultado = document.getElementById('resultadoFotoLocura');
+    const texto = document.getElementById('textoFotoLocura');
+    const boton = document.getElementById('analizarFotoLocura');
+
+    document.getElementById('buscarWebLocura').onclick = () => {
+      const q = texto.value.trim();
+      if (!q) {
+        resultado.textContent = 'Primero introduce una marca o modelo.';
+        return;
+      }
+      window.open(
+        'https://www.google.com/search?q=' +
+        encodeURIComponent(q + ' producto fabricante ficha técnica'),
+        '_blank', 'noopener'
+      );
+    };
+
+    boton.onclick = async () => {
+      const archivo = foto.files && foto.files[0];
+      if (!archivo) {
+        resultado.textContent = 'Primero selecciona una fotografía.';
+        return;
+      }
+
+      boton.disabled = true;
+      resultado.textContent = 'Analizando fotografía...';
+      let codigo = '';
+      let letras = '';
+
+      try {
+        if ('BarcodeDetector' in window) {
+          const disponibles = await BarcodeDetector.getSupportedFormats();
+          const formatos = ['ean_13','ean_8','upc_a','upc_e','code_128']
+            .filter(x => disponibles.includes(x));
+
+          if (formatos.length) {
+            const imagen = await createImageBitmap(archivo);
+            try {
+              const encontrados =
+                await new BarcodeDetector({formats: formatos}).detect(imagen);
+              codigo = encontrados.find(x => x.rawValue)?.rawValue || '';
+            } finally {
+              imagen.close();
+            }
+          }
+        }
+      } catch (e) {
+        // Algunos navegadores no admiten esta función.
+      }
+
+      try {
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src =
+              'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        try {
+          const r = await worker.recognize(archivo);
+          letras = (r.data.text || '').trim();
+        } finally {
+          await worker.terminate();
+        }
+      } catch (e) {
+        resultado.textContent = 'No se pudo leer el texto de la imagen.';
+      }
+
+      const lineas = letras.split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 2);
+
+      texto.value = [codigo, ...lineas.slice(0, 4)]
+        .filter(Boolean).join(' ').slice(0, 180);
+
+      if (codigo) {
+        const manual = document.getElementById('manualCode');
+        const ficha = document.getElementById('barcode');
+        if (manual) manual.value = codigo;
+        if (ficha) ficha.value = codigo;
+      }
+
+      resultado.textContent = codigo
+        ? 'Código encontrado: ' + codigo + '. Revisa los datos.'
+        : lineas.length
+          ? 'Texto detectado. Revisa la marca y el modelo.'
+          : 'No se detectaron datos fiables. Prueba otra foto o Google Lens.';
+
+      boton.disabled = false;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarFoto);
+  } else {
+    iniciarFoto();
+  }
+})();
+</script>
+<script>
+(() => {
+  function iniciarFoto() {
+    const foto = document.getElementById('photo');
+    if (!foto || document.getElementById('buscadorFotoLocura')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'buscadorFotoLocura';
+    panel.style = 'margin:14px 0;padding:14px;border:1px solid #f244b3;border-radius:12px';
+
+    panel.innerHTML = `
+      <strong>📸 Buscar producto por fotografía</strong>
+      <p>Selecciona una fotografía de la caja, etiqueta o producto.</p>
+      <button type="button" id="analizarFotoLocura">Analizar esta foto</button>
+      <p id="resultadoFotoLocura" role="status"></p>
+      <label for="textoFotoLocura">Marca, modelo o código detectado</label>
+      <input id="textoFotoLocura" placeholder="Puedes corregir el texto">
+      <button type="button" id="buscarWebLocura">Buscar en Internet</button>
+      <a href="https://lens.google.com/" target="_blank"
+         rel="noopener noreferrer" style="display:inline-block;margin:12px">
+         Buscar imagen en Google Lens
+      </a>
+    `;
+
+    foto.insertAdjacentElement('afterend', panel);
+
+    const resultado = document.getElementById('resultadoFotoLocura');
+    const texto = document.getElementById('textoFotoLocura');
+    const boton = document.getElementById('analizarFotoLocura');
+
+    document.getElementById('buscarWebLocura').onclick = () => {
+      const q = texto.value.trim();
+      if (!q) {
+        resultado.textContent = 'Primero introduce una marca o modelo.';
+        return;
+      }
+      window.open(
+        'https://www.google.com/search?q=' +
+        encodeURIComponent(q + ' producto fabricante ficha técnica'),
+        '_blank', 'noopener'
+      );
+    };
+
+    boton.onclick = async () => {
+      const archivo = foto.files && foto.files[0];
+      if (!archivo) {
+        resultado.textContent = 'Primero selecciona una fotografía.';
+        return;
+      }
+
+      boton.disabled = true;
+      resultado.textContent = 'Analizando fotografía...';
+      let codigo = '';
+      let letras = '';
+
+      try {
+        if ('BarcodeDetector' in window) {
+          const disponibles = await BarcodeDetector.getSupportedFormats();
+          const formatos = ['ean_13','ean_8','upc_a','upc_e','code_128']
+            .filter(x => disponibles.includes(x));
+
+          if (formatos.length) {
+            const imagen = await createImageBitmap(archivo);
+            try {
+              const encontrados =
+                await new BarcodeDetector({formats: formatos}).detect(imagen);
+              codigo = encontrados.find(x => x.rawValue)?.rawValue || '';
+            } finally {
+              imagen.close();
+            }
+          }
+        }
+      } catch (e) {
+        // Algunos navegadores no admiten esta función.
+      }
+
+      try {
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src =
+              'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        try {
+          const r = await worker.recognize(archivo);
+          letras = (r.data.text || '').trim();
+        } finally {
+          await worker.terminate();
+        }
+      } catch (e) {
+        resultado.textContent = 'No se pudo leer el texto de la imagen.';
+      }
+
+      const lineas = letras.split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 2);
+
+      texto.value = [codigo, ...lineas.slice(0, 4)]
+        .filter(Boolean).join(' ').slice(0, 180);
+
+      if (codigo) {
+        const manual = document.getElementById('manualCode');
+        const ficha = document.getElementById('barcode');
+        if (manual) manual.value = codigo;
+        if (ficha) ficha.value = codigo;
+      }
+
+      resultado.textContent = codigo
+        ? 'Código encontrado: ' + codigo + '. Revisa los datos.'
+        : lineas.length
+          ? 'Texto detectado. Revisa la marca y el modelo.'
+          : 'No se detectaron datos fiables. Prueba otra foto o Google Lens.';
+
+      boton.disabled = false;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarFoto);
+  } else {
+    iniciarFoto();
+  }
+})();
+</script> <a href="https://lens.google.com/" target="_blank"
+         rel="noopener noreferrer" style="display:inline-block;margin:12px">
+         Buscar imagen en Google Lens
+      </a>
+    `;
+
+    foto.insertAdjacentElement('afterend', panel);
+
+    const resultado = document.getElementById('resultadoFotoLocura');
+    const texto = document.getElementById('textoFotoLocura');
+    const boton = document.getElementById('analizarFotoLocura');
+
+    document.getElementById('buscarWebLocura').onclick = () => {
+      const q = texto.value.trim();
+      if (!q) {
+        resultado.textContent = 'Primero introduce una marca o modelo.';
+        return;
+      }
+      window.open(
+        'https://www.google.com/search?q=' +
+        encodeURIComponent(q + ' producto fabricante ficha técnica'),
+        '_blank', 'noopener'
+      );
+    };
+
+    boton.onclick = async () => {
+      const archivo = foto.files && foto.files[0];
+      if (!archivo) {
+        resultado.textContent = 'Primero selecciona una fotografía.';
+        return;
+      }
+
+      boton.disabled = true;
+      resultado.textContent = 'Analizando fotografía...';
+      let codigo = '';
+      let letras = '';
+
+      try {
+        if ('BarcodeDetector' in window) {
+          const disponibles = await BarcodeDetector.getSupportedFormats();
+          const formatos = ['ean_13','ean_8','upc_a','upc_e','code_128']
+            .filter(x => disponibles.includes(x));
+
+          if (formatos.length) {
+            const imagen = await createImageBitmap(archivo);
+            try {
+              const encontrados =
+                await new BarcodeDetector({formats: formatos}).detect(imagen);
+              codigo = encontrados.find(x => x.rawValue)?.rawValue || '';
+            } finally {
+              imagen.close();
+            }
+          }
+        }
+      } catch (e) {
+        // Algunos navegadores no admiten esta función.
+      }
+
+      try {
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src =
+              'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        try {
+          const r = await worker.recognize(archivo);
+          letras = (r.data.text || '').trim();
+        } finally {
+          await worker.terminate();
+        }
+      } catch (e) {
+        resultado.textContent = 'No se pudo leer el texto de la imagen.';
+      }
+
+      const lineas = letras.split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 2);
+
+      texto.value = [codigo, ...lineas.slice(0, 4)]
+        .filter(Boolean).join(' ').slice(0, 180);
+
+      if (codigo) {
+        const manual = document.getElementById('manualCode');
+        const ficha = document.getElementById('barcode');
+        if (manual) manual.value = codigo;
+        if (ficha) ficha.value = codigo;
+      }
+
+      resultado.textContent = codigo
+        ? 'Código encontrado: ' + codigo + '. Revisa los datos.'
+        : lineas.length
+          ? 'Texto detectado. Revisa la marca y el modelo.'
+          : 'No se detectaron datos fiables. Prueba otra foto o Google Lens.';
+
+      boton.disabled = false;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarFoto);
+  } else {
+    iniciarFoto();
+  }
+})();
 </script></body></html>
