@@ -21,6 +21,12 @@ const configured=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL)&&S
 if(!configured||!window.supabase){$('setup').classList.remove('hidden');if(configured)$('setup').insertAdjacentText('beforeend',' No se pudo cargar la biblioteca de Supabase. Revisa tu conexión.');return}
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let products=[];
+  
+window.analizarConIA = (imagen, codigo = '') =>
+  db.functions.invoke('analizar-producto', {
+    body: { image: imagen, barcode: codigo }
+  });
+
 const message=(t,error=false)=>{const el=$('message');el.textContent=t;el.classList.toggle('danger',error)};
 const loginMessage=(t,error=false)=>{const el=$('loginMessage');el.textContent=t;el.classList.toggle('danger',error)};
 const value=id=>$(id).value.trim();
@@ -99,6 +105,65 @@ const {data,error}=await db.auth.getSession();if(error)loginMessage(errText(erro
         resultado.textContent = 'Primero selecciona una fotografía.';
         return;
       }
+
+    try {
+      boton.disabled = true;
+      resultado.textContent = 'Consultando inteligencia artificial...';
+
+      const imagen = await createImageBitmap(archivo);
+      const canvas = document.createElement('canvas');
+      const escala = Math.min(
+        1, 1200 / Math.max(imagen.width, imagen.height)
+      );
+      canvas.width = Math.round(imagen.width * escala);
+      canvas.height = Math.round(imagen.height * escala);
+      canvas.getContext('2d').drawImage(
+        imagen, 0, 0, canvas.width, canvas.height
+      );
+      imagen.close();
+
+      const { data, error } = await window.analizarConIA(
+        canvas.toDataURL('image/jpeg', 0.75),
+        document.getElementById('barcode')?.value || ''
+      );
+
+      if (error || !data?.product) {
+        throw new Error(error?.message || data?.error || 'Sin respuesta');
+      }
+
+      const p = data.product;
+
+      if (confirm('¿Rellenar la ficha con los datos propuestos por IA?')) {
+        const campos = {
+          name: p.name,
+          brand: p.brand,
+          manufacturer: p.manufacturer,
+          barcode: p.barcode,
+          weight: p.weight_kg,
+          features: [
+            p.model ? 'Modelo: ' + p.model : '',
+            p.features,
+            p.notes
+          ].filter(Boolean).join('\n')
+        };
+
+        for (const [id, valor] of Object.entries(campos)) {
+          const campo = document.getElementById(id);
+          if (campo && valor !== null && valor !== undefined && valor !== '') {
+            campo.value = String(valor);
+          }
+        }
+      }
+
+      resultado.textContent = 'Análisis terminado. Revisa todos los datos.';
+      return;
+
+    } catch (error) {
+      resultado.textContent = 'Error de IA: ' + error.message;
+      return;
+    } finally {
+      boton.disabled = false;
+    }
 
       boton.disabled = true;
       resultado.textContent = 'Analizando fotografía...';
