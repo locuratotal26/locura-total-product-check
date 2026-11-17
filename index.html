@@ -20,6 +20,7 @@ const $=id=>document.getElementById(id);
 const configured=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL)&&SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
 if(!configured||!window.supabase){$('setup').classList.remove('hidden');if(configured)$('setup').insertAdjacentText('beforeend',' No se pudo cargar la biblioteca de Supabase. Revisa tu conexión.');return}
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  window.locuraDb = db;
 let products=[];
   
 window.analizarConIA = (imagen, codigo = '') =>
