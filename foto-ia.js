@@ -1,6 +1,6 @@
 /* LOCURA TOTAL PRODUCT CHECK - reconocimiento visual IA
    Complemento del index.html existente: no altera el escaner ni el guardado Supabase.
-   Requiere desplegar Edge Function: analizar-producto-foto.
+   Requiere desplegar Edge Function: analizar-producto.
 */
 (() => {
   'use strict';
@@ -62,7 +62,7 @@
       estado.textContent = 'Reconociendo marca, producto y datos visibles...';
       try {
         const image = await imagenReducida(file);
-        const respuesta = await fetch(`${PROJECT_URL}/functions/v1/analizar-producto-foto`, {
+        const respuesta = await fetch(`${PROJECT_URL}/functions/v1/analizar-producto`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
