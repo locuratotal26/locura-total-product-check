@@ -454,3 +454,127 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();
+
+
+/* Correccion: algunas galerias (Samsung/Windows) entregan fotos HEIC, AVIF
+   o archivos sin vista previa. Se prueban y convierten localmente a JPEG
+   ANTES de que multifoto.js y app-lista.js los incorporen. Si la imagen no
+   puede abrirse, se omite sin romper el analisis de las demas fotografias.
+   Esta funcion no sube ni elimina archivos del servidor. */
+(() => {
+  'use strict';
+  if (window.locuraFotosCompatibles) return;
+  window.locuraFotosCompatibles = true;
+  const $ = id => document.getElementById(id);
+  const MAX = 6;
+  const LIMIT = 18 * 1024 * 1024;
+  let forwarding = false;
+  let pending = null;
+  let queuedAnalysis = false;
+
+  async function openBitmap(file) {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const b = await createImageBitmap(file);
+        return { width:b.width, height:b.height,
+          draw:ctx=>ctx.drawImage(b,0,0), close:()=>b.close() };
+      } catch (_) { /* probar el lector de imagen del navegador */ }
+    }
+    const objectURL = URL.createObjectURL(file);
+    try {
+      const pic = new Image();
+      pic.decoding = 'async';
+      await new Promise((resolve,reject) => {
+        pic.onload = resolve;
+        pic.onerror = () => reject(new Error('Formato de imagen no admitido'));
+        pic.src = objectURL;
+      });
+      return { width:pic.naturalWidth, height:pic.naturalHeight,
+        draw:ctx=>ctx.drawImage(pic,0,0), close:()=>{} };
+    } finally { URL.revokeObjectURL(objectURL); }
+  }
+  async function toJpeg(file) {
+    if (!file || !file.size || file.size > LIMIT) throw Error('El archivo está vacío o supera 18 MB');
+    // Para convertir HEIC/AVIF el navegador debe poder decodificarlo. Nunca
+    // se cambia solo la extension porque eso crearia una falsa foto JPEG.
+    const bitmap = await openBitmap(file);
+    try {
+      if (!(bitmap.width>0 && bitmap.height>0)) throw Error('La fotografía no tiene dimensiones válidas');
+      const scale = Math.min(1,2048/Math.max(bitmap.width,bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1,Math.round(bitmap.width*scale));
+      canvas.height = Math.max(1,Math.round(bitmap.height*scale));
+      const ctx=canvas.getContext('2d');
+      if (!ctx) throw Error('No se pudo preparar la fotografía');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      bitmap.draw(ctx);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve,'image/jpeg',0.84));
+      if (!blob || blob.type!=='image/jpeg' || !blob.size) throw Error('No se pudo convertir a JPEG');
+      const simple = (file.name||'foto').replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,55);
+      return new File([blob],simple+'-locura.jpg',{type:'image/jpeg',lastModified:Date.now()});
+    } finally { bitmap.close(); }
+  }
+  function init() {
+    const input = $('multiPhotos'), thumbs = $('multiThumbs'), analyze = $('multiAnalyze');
+    const panel = $('locuraMultifoto');
+    if (!input || !thumbs || !panel || !analyze) return;
+    const warn = document.createElement('p');
+    warn.id='locuraFormatNotice'; warn.setAttribute('role','status');
+    warn.style.cssText='color:#ffd49c;white-space:pre-wrap;margin:8px 0;font-size:14px';
+    const count = $('locuraPhotoSummary');
+    if (count) count.after(warn); else input.after(warn);
+
+    // Capturar el evento ANTES de los modulos antiguos para que nunca
+    // guarden archivos HEIC/corruptos como si fueran JPG/PNG/WEBP.
+    window.addEventListener('change', event => {
+      if (event.target !== input || forwarding) return;
+      event.stopImmediatePropagation();
+      const selected = Array.from(input.files||[]);
+      input.value='';
+      const available = Math.max(0,MAX-thumbs.children.length);
+      const chosen = selected.slice(0,available);
+      if (!selected.length) return;
+      warn.textContent='Preparando '+chosen.length+' fotografía(s)...';
+      const processing = (async () => {
+        const safe=[],errors=[];
+        for (const file of chosen) {
+          try { safe.push(await toJpeg(file)); }
+          catch (e) { errors.push((file.name||'Foto')+': '+(e?.message||'formato incompatible')); }
+        }
+        if (selected.length>chosen.length) errors.push('Se superó el máximo de 6 fotografías.');
+        if (safe.length) {
+          const data = new DataTransfer();
+          for (const file of safe) data.items.add(file);
+          input.files = data.files;
+          forwarding=true;
+          try { input.dispatchEvent(new Event('change',{bubbles:true})); }
+          finally { forwarding=false; }
+        }
+        warn.textContent = errors.length
+          ? '✅ '+safe.length+' foto(s) listas. Se omitieron '+errors.length+':\n'+errors.join('\n')+'\nPara las que fallen, elige JPG/PNG o realiza una captura de pantalla.'
+          : '✅ '+safe.length+' fotografía(s) preparadas. Puedes añadir más o analizar todas juntas.';
+      })();
+      pending=processing;
+      processing.catch(e => {warn.textContent='Error al preparar las fotos: '+(e?.message||'error desconocido');});
+      const clearPending=()=>{if (pending===processing) pending=null;};
+      processing.then(clearPending,clearPending);
+    },true);
+
+    // La camara6.js lanza el analisis justo tras enviar las fotos. Si aun
+    // estan convirtiendose, lo posponemos para evitar previews rotas.
+    window.addEventListener('click',event=>{
+      if (event.target !== analyze || !pending) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (queuedAnalysis) return;
+      queuedAnalysis=true;
+      const task=pending;
+      task.finally(()=>{
+        queuedAnalysis=false;
+        if (thumbs.children.length && !pending) analyze.click();
+      });
+    },true);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
