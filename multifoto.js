@@ -25,7 +25,7 @@
    panel.id='locuraMultifoto'; panel.className='panel';
    panel.style.border='2px solid #f244b3';
    panel.innerHTML=`<h2>📸 Analizar varias fotos de un producto</h2>
-     <p class="muted">Selecciona hasta 4 fotos del mismo producto: frontal, parte trasera, etiqueta y código de barras.</p>
+     <p class="muted">Selecciona hasta 6 fotos del mismo producto, sin orden ni posiciones obligatorias.</p>
      <label for="multiPhotos">Fotografías</label>
      <input type="file" id="multiPhotos" multiple accept="image/jpeg,image/png,image/webp">
      <div id="multiThumbs" class="grid"></div>
@@ -46,12 +46,12 @@
        remove.onclick=()=>{photos.splice(i,1);result.hidden=true;showPhotos();};
        block.append(pic,remove);thumbs.append(block);
      });
-     status.textContent=photos.length+'/4 fotos seleccionadas';
+     status.textContent=photos.length+'/6 fotos seleccionadas';
    }
    input.onchange=()=>{
-     const files=[...input.files]; const available=4-photos.length;
+     const files=[...input.files]; const available=6-photos.length;
      photos.push(...files.slice(0,available)); input.value=''; showPhotos();
-     if(files.length>available)status.textContent='Máximo 4 fotos; elimina alguna para cambiarla.';
+     if(files.length>available)status.textContent='Máximo 6 fotos; elimina alguna para cambiarla.';
    };
    function fill(id,value) {
      const el=$(id);if(el && text(value)) {el.value=text(value);el.dispatchEvent(new Event('input',{bubbles:true}));}
@@ -66,7 +66,7 @@
        if(!session) throw new Error('Inicia sesión de nuevo');
        status.textContent='Preparando fotografías...';
        const images=await Promise.all(photos.map(reducePhoto));
-       if(images.some(x=>x.length>4000000) || images.reduce((s,x)=>s+x.length,0)>11000000)throw Error('Las fotos ocupan demasiado; elige imágenes más pequeñas');
+       if(images.some(x=>x.length>4000000) || images.reduce((s,x)=>s+x.length,0)>15000000)throw Error('Las fotos ocupan demasiado; elige imágenes más pequeñas');
        status.textContent='La IA está leyendo todas las etiquetas...';
        const {data,error}=await db.functions.invoke('analizar-producto-multifoto',{body:{images}});
        if(error || !data?.product) throw Error(data?.error||error?.message||'Error de análisis');
