@@ -1,0 +1,16 @@
+{
+  "id": "/locura-total-product-check/",
+  "name": "LOCURA TOTAL PRODUCT CHECK",
+  "short_name": "LOCURA TOTAL",
+  "description": "Escanea productos, analiza hasta 6 fotos y guarda fichas privadas para revisión.",
+  "start_url": "/locura-total-product-check/",
+  "scope": "/locura-total-product-check/",
+  "display": "standalone",
+  "background_color": "#101018",
+  "theme_color": "#181321",
+  "lang": "es-ES",
+  "icons": [
+    {"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
