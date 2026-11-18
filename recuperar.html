@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recuperar contraseña | LOCURA TOTAL PRODUCT CHECK</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui,Arial,sans-serif;background:#111019;color:#f9f7fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
+main{width:100%;max-width:480px;border:1px solid #744b79;background:#211b2b;border-radius:16px;padding:24px;box-shadow:0 20px 50px #0006}
+h1{margin:0 0 8px;font-size:1.45rem}p{line-height:1.5}.muted{color:#d7ccd9}label{display:block;margin-top:16px;font-weight:650}
+input{width:100%;margin-top:6px;padding:14px;background:#110e17;color:white;border:1px solid #8e758d;border-radius:9px;font:inherit}
+button{margin-top:22px;width:100%;padding:14px;border:0;border-radius:9px;background:#f244b3;color:#250d20;font-weight:800;font:inherit;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}a{color:#ff89cc}#status{white-space:pre-wrap;min-height:26px}form[hidden]{display:none}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+</head>
+<body>
+<main>
+<h1>🔐 LOCURA TOTAL PRODUCT CHECK</h1>
+<p class="muted">Establece una nueva contraseña para tu cuenta. Esta página solo funciona al abrir un enlace de recuperación enviado al correo de tu cuenta.</p>
+<p id="status" role="status">Comprobando el enlace de recuperación…</p>
+<form id="requestForm" hidden>
+<label for="email">Correo de tu cuenta LOCURA TOTAL</label>
+<input id="email" type="email" autocomplete="email" required>
+<button id="send" type="submit">Enviarme un enlace de recuperación</button>
+</form>
+<form id="form" hidden>
+<label for="newPassword">Contraseña nueva (mínimo 12 caracteres)</label>
+<input id="newPassword" type="password" autocomplete="new-password" minlength="12" required>
+<label for="confirmPassword">Repetir contraseña nueva</label>
+<input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required>
+<button id="save" type="submit">Guardar mi nueva contraseña</button>
+</form>
+<p><a href="https://locuratotal26.github.io/locura-total-product-check/">Volver a la aplicación</a></p>
+</main>
+<script>
+window.addEventListener('DOMContentLoaded', async () => {
+  'use strict';
+  const app = 'https://locuratotal26.github.io/locura-total-product-check/';
+  const status = document.getElementById('status');
+  const form = document.getElementById('form');
+  const requestForm = document.getElementById('requestForm');
+  const save = document.getElementById('save');
+  const send = document.getElementById('send');
+  const resetPage = app + 'recuperar.html';
+  const fromRecovery = /(?:^|[&#?])type=recovery(?:[&#]|$)/.test(window.location.hash + '&' + window.location.search);
+  if (!window.supabase) {
+    status.textContent = 'No se pudo cargar el sistema de inicio de sesión. Revisa la conexión.';
+    return;
+  }
+  const client = window.supabase.createClient(
+    'https://bepeiatxumpovpijmwmc.supabase.co',
+    'sb_publishable_0wtlABuFC4F1m88EY2Pv3w_9HEHTD0f',
+    { auth: { detectSessionInUrl: true, flowType: 'implicit' } }
+  );
+  let ready = false;
+  const permit = () => {
+    ready = true;
+    form.hidden = false;
+    requestForm.hidden = true;
+    status.textContent = 'Enlace válido. Escribe tu contraseña nueva en esta página.';
+  };
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' && session) permit();
+  });
+  try {
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    if (data?.session && fromRecovery) permit();
+    if (!ready) {
+      requestForm.hidden = false;
+      status.textContent = 'Solicita un enlace de recuperación usando el correo de tu cuenta.';
+    }
+  } catch (e) {
+    status.textContent = 'No se pudo validar el enlace. Solicita un correo de recuperación nuevo.';
+    requestForm.hidden = false;
+  }
+  requestForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    send.disabled = true;
+    status.textContent = 'Solicitando enlace de recuperación…';
+    try {
+      const email = document.getElementById('email').value.trim();
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: resetPage
+      });
+      if (error) throw error;
+      status.textContent = 'Si el correo corresponde a una cuenta, recibirás un enlace. Revisa Gmail y Spam. Abre el enlace desde el mismo navegador si es posible.';
+    } catch (e) {
+      status.textContent = 'No se pudo solicitar el enlace: ' + (e?.message || 'inténtalo más tarde');
+    } finally { send.disabled = false; }
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!ready) return;
+    const password = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    if (password.length < 12) { status.textContent = 'La contraseña debe tener al menos 12 caracteres.'; return; }
+    if (password !== confirm) { status.textContent = 'Las dos contraseñas no coinciden.'; return; }
+    save.disabled = true;
+    status.textContent = 'Guardando contraseña nueva…';
+    try {
+      const { error } = await client.auth.updateUser({password});
+      if (error) throw error;
+      form.hidden = true;
+      status.textContent = 'Contraseña actualizada correctamente. Ya puedes iniciar sesión en LOCURA TOTAL PRODUCT CHECK.';
+      await client.auth.signOut();
+    } catch (e) {
+      status.textContent = 'No se pudo cambiar la contraseña: ' + (e?.message || 'enlace no válido o caducado') + '. Si es necesario, solicita un enlace nuevo.';
+    } finally { save.disabled = false; }
+  });
+});
+</script>
+</body>
+</html>
