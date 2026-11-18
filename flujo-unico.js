@@ -218,3 +218,239 @@
     init();
   }
 })();
+
+/* MEJORAS DE LOCURA TOTAL: selector múltiple de fotos y borrado de borradores.
+   Mantiene el mismo archivo flujo-unico.js para no tener que modificar index.html.
+   Cualquier borrado de producto necesita confirmación explícita.
+*/
+(() => {
+  'use strict';
+  if (window.locuraMejoras2026) return;
+  window.locuraMejoras2026 = true;
+  const $ = id => document.getElementById(id);
+  const LIMIT = 6;
+  const BUCKET = 'locura-productos';
+  const allowed = /^image\/(jpeg|png|webp)$/;
+
+  function initPhotoPicker() {
+    const panel = $('locuraMultifoto');
+    const input = $('multiPhotos');
+    const thumbs = $('multiThumbs');
+    if (!panel || !input || !thumbs || $('locuraChooseMany')) return;
+
+    // El atributo multiple funciona tanto en Windows como en el selector de Android.
+    input.multiple = true;
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.removeAttribute('capture');
+    input.hidden = true;
+    const oldLabel = panel.querySelector('label[for="multiPhotos"]');
+    if (oldLabel) oldLabel.hidden = true;
+    const oldGallery = $('locuraGalleryButton');
+    if (oldGallery) oldGallery.hidden = true;
+    // En algunos CSS antiguos los botones tienen display:inline-block !important.
+    const oldStyle = document.createElement('style');
+    oldStyle.textContent = '#locuraGalleryButton{display:none!important}#locuraMultifoto #multiThumbs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}#locuraMultifoto #multiThumbs>div{min-width:0;border:1px solid #67526d;padding:6px;border-radius:12px}#locuraMultifoto #multiThumbs button{font-size:14px;padding:10px;max-width:100%;background:#56394d;color:#fff}#locuraChooseMany{display:block;width:100%;background:#f244b3;color:#16101a;margin:10px 0;font-weight:750}#locuraAddMany{background:#54425c;color:white}#locuraClearPhotos{background:#533442;color:#fff}#locuraPhotoSummary{margin:12px 0;color:#ffe2a6;font-weight:650}#locuraPhotoGuide{font-size:14px;color:#ddd0df}#locuraDropArea{border:1px dashed #a17bb0;border-radius:10px;padding:12px;margin:10px 0;color:#e2d2e6;text-align:center}@media(max-width:430px){#locuraMultifoto #multiThumbs{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+    document.head.append(oldStyle);
+
+    const picker = document.createElement('button');
+    picker.type = 'button';
+    picker.id = 'locuraChooseMany';
+    picker.textContent = '🖼️ Elegir 4 fotos juntas (hasta 6)';
+    picker.addEventListener('click', () => input.click());
+    const camera = $('locuraCameraButton');
+    if (camera) panel.insertBefore(picker, camera);
+    else panel.insertBefore(picker, input);
+    if (camera) camera.textContent = '📷 Hacer fotos con la cámara (opcional)';
+
+    const guide = document.createElement('p');
+    guide.id = 'locuraPhotoGuide';
+    guide.textContent = 'Ordenador: mantén Ctrl y marca 4 fotos; pulsa Abrir. Móvil: toca 4 fotos y confirma la selección. También puedes añadirlas en varias tandas.';
+    picker.after(guide);
+    const count = document.createElement('p');
+    count.id = 'locuraPhotoSummary';
+    guide.after(count);
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px';
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.id = 'locuraAddMany';
+    add.textContent = '➕ Añadir más fotos';
+    add.addEventListener('click', () => {
+      if (thumbs.children.length >= LIMIT) {
+        count.textContent = 'Ya tienes las 6 fotos. Quita alguna para añadir otra.';
+      } else input.click();
+    });
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.id = 'locuraClearPhotos';
+    clear.textContent = '🗑️ Quitar todas las fotos';
+    clear.addEventListener('click', () => {
+      if (!thumbs.children.length) return;
+      if (!window.confirm('¿Quitar todas las fotos seleccionadas de este producto? No se borran fotos que ya estén guardadas en otros borradores.')) return;
+      for (let n = 0; n < LIMIT; n++) {
+        const remove = thumbs.querySelector('button');
+        if (!remove) break;
+        remove.click(); // Reutiliza el borrado de multifoto.js y sincroniza app-lista.js.
+      }
+      update();
+    });
+    actions.append(add, clear);
+    count.after(actions);
+
+    const drop = document.createElement('div');
+    drop.id = 'locuraDropArea';
+    drop.textContent = '💻 En ordenador también puedes arrastrar aquí tus 4 fotos juntas';
+    actions.after(drop);
+    drop.addEventListener('dragover', ev => {
+      if (ev.dataTransfer?.types?.includes('Files')) {
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    drop.addEventListener('drop', ev => {
+      ev.preventDefault();
+      const files = [...(ev.dataTransfer?.files || [])];
+      addFiles(files);
+    });
+
+    function update() {
+      const amount = thumbs.children.length;
+      count.textContent = amount + '/6 fotos seleccionadas. ' +
+        (amount === 4 ? '✅ Perfecto: ya puedes analizar las 4 juntas.' :
+         amount === 6 ? '✅ Máximo de fotos listo. Pulsa Analizar y buscar.' :
+         amount ? 'Puedes analizar o añadir más fotos.' : 'Elige fotos para empezar.');
+      add.disabled = amount >= LIMIT;
+      clear.disabled = amount === 0;
+    }
+    // El flujo antiguo ya es acumulativo. Usamos su evento para conservar
+    // las fotos tanto en el analizador como en el guardado privado de Supabase.
+    function addFiles(files) {
+      const remaining = LIMIT - thumbs.children.length;
+      const clean = files.filter(f => f && allowed.test(f.type) && f.size <= 18 * 1024 * 1024);
+      const picked = clean.slice(0, Math.max(0, remaining));
+      if (!picked.length) {
+        count.textContent = remaining <= 0 ? 'Ya hay 6 fotos. Quita una para añadir otra.' : 'No se añadieron fotos: usa JPG, PNG o WEBP de menos de 18 MB.';
+        return;
+      }
+      try {
+        const transfer = new DataTransfer();
+        for (const file of picked) transfer.items.add(file);
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (clean.length < files.length || picked.length < clean.length) {
+          const warn = document.createElement('p');
+          warn.style.color = '#ffd49c';
+          warn.textContent = 'Aviso: se omitieron ' + (files.length - picked.length) + ' fotos por formato, tamaño o límite de 6.';
+          warn.setAttribute('role', 'status');
+          const previous = $('locuraRejectedPhotos');
+          if (previous) previous.remove();
+          warn.id = 'locuraRejectedPhotos';
+          drop.after(warn);
+        }
+      } catch (err) {
+        count.textContent = 'No se pudieron incorporar las fotos: ' + (err?.message || 'error del navegador');
+      }
+    }
+    // Si un selector de Android devuelve solo 2 fotos, el botón Añadir más
+    // permite completar 4 o 6 sin reemplazar las ya elegidas.
+    thumbs.addEventListener('click', () => setTimeout(update, 0));
+    new MutationObserver(update).observe(thumbs, { childList: true });
+    update();
+  }
+
+  function initDeleteProducts() {
+    const items = $('items');
+    if (!items || items.dataset.locuraDeleteReady === 'yes') return;
+    items.dataset.locuraDeleteReady = 'yes';
+    let busy = false;
+    let scheduled = false;
+    async function attach() {
+      if (busy || !window.locuraDb) return;
+      const cards = [...items.querySelectorAll(':scope > .item')];
+      if (!cards.length || cards.every(card => card.querySelector('.locura-delete-product'))) return;
+      busy = true;
+      try {
+        const db = window.locuraDb;
+        const { data, error } = await db.from('productos')
+          .select('id,name,created_at,approved').order('created_at', { ascending: false });
+        if (error || !Array.isArray(data) || data.length !== cards.length) return;
+        for (let i = 0; i < cards.length; i++) {
+          const card = cards[i], row = data[i];
+          if (card.querySelector('.locura-delete-product')) continue;
+          // No vinculamos botones a registros si cambió el orden al cargar.
+          const heading = card.querySelector('h3')?.textContent || '';
+          const created = [...card.querySelectorAll('p')]
+            .find(p => p.textContent.startsWith('Creado: '))?.textContent;
+          const expected = 'Creado: ' + new Date(row.created_at).toLocaleString('es-ES');
+          if (heading !== row.name || created !== expected) continue;
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'secondary locura-delete-product';
+          button.textContent = '🗑️ Eliminar producto';
+          button.style.cssText = 'display:block;margin:12px 0 2px;background:#7b233a;color:#fff;border:1px solid #e35a81;font-weight:700';
+          const local = document.createElement('p');
+          local.setAttribute('role', 'status');
+          local.style.cssText = 'color:#ffd6df;white-space:pre-wrap';
+          button.addEventListener('click', async () => {
+            const question = '¿Eliminar definitivamente «' + row.name + '» y sus fotos guardadas?\n\nEsta acción no se puede deshacer.';
+            if (!window.confirm(question)) return;
+            button.disabled = true;
+            local.textContent = 'Eliminando producto...';
+            try {
+              const { data: auth, error: authError } = await db.auth.getUser();
+              if (authError || !auth?.user?.id) throw new Error('Inicia sesión de nuevo.');
+              const { data: record, error: readError } = await db.from('productos')
+                .select('id,name,image_urls').eq('id', row.id).single();
+              if (readError || !record) throw new Error(readError?.message || 'No se encuentra el producto.');
+              if (String(record.id) !== String(row.id) || record.name !== row.name)
+                throw new Error('El registro ha cambiado. Actualiza la lista antes de eliminar.');
+              const paths = (Array.isArray(record.image_urls) ? record.image_urls : [])
+                .filter(path => typeof path === 'string' &&
+                  path.startsWith(auth.user.id + '/' + record.id + '/') && path.length < 300);
+              const { data: deleted, error: delError } = await db.from('productos')
+                .delete().eq('id', row.id).select('id');
+              if (delError || deleted?.length !== 1)
+                throw new Error(delError?.message || 'No se pudo eliminar el registro. Comprueba los permisos.');
+              let photoError = '';
+              if (paths.length) {
+                const { error } = await db.storage.from(BUCKET).remove(paths);
+                if (error) photoError = error.message || 'No se pudo borrar una o varias fotos privadas.';
+              }
+              $('refresh')?.click();
+              if (photoError) {
+                window.alert('Producto eliminado, pero algunas fotos podrían seguir en el almacenamiento privado: ' + photoError);
+              } else {
+                window.alert('✅ Producto eliminado correctamente' + (paths.length ? ' junto con sus fotos.' : '.'));
+              }
+            } catch (err) {
+              local.textContent = 'No se pudo eliminar: ' + (err?.message || 'error desconocido');
+              button.disabled = false;
+            }
+          });
+          card.append(button, local);
+        }
+      } catch (err) {
+        // Si la sesión todavía no está lista, la siguiente actualización reintentará.
+        console.warn('No se pudo preparar la eliminación:', err);
+      } finally { busy = false; }
+    }
+    function schedule() {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => { scheduled = false; attach(); }, 50);
+    }
+    new MutationObserver(mutations => {
+      if (mutations.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && n.classList?.contains('item'))))
+        schedule();
+    }).observe(items, { childList: true });
+    $('refresh')?.addEventListener('click', () => setTimeout(schedule, 100));
+    schedule();
+  }
+
+  function init() {
+    initPhotoPicker();
+    initDeleteProducts();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
+})();
