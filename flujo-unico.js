@@ -132,8 +132,9 @@
             body: { name, brand, model, barcode }
           });
           if (error || data?.error) throw new Error(data?.error || error.message);
-          webData = data;
-           
+          webData = data;          
+const w = webData?.product;
+
 const marcaCoincide = brand && w?.brand &&
   normalized(brand) === normalized(w.brand);
 
