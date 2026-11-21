@@ -950,4 +950,180 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const app = document.getElementById('app');
+  const form = document.getElementById('productForm');
+  const multi = document.getElementById('locuraMultifoto');
+
+  if (!app || !form || !multi ||
+      document.getElementById('locuraCompacto')) return;
+
+  const registro = form.parentElement;
+  registro.id = 'locuraRegistroCompacto';
+
+  const estilo = document.createElement('style');
+  estilo.textContent = `
+    #locuraCompacto{padding:12px;margin-bottom:10px}
+    #locuraCompacto h2{margin:0 0 12px;font-size:17px}
+    #locuraCompacto .pasos{
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px
+    }
+    #locuraCompacto .pasos button{
+      margin:0;min-width:0;min-height:88px;width:100%;
+      background:#342b41;color:white;border:1px solid #796183;
+      padding:11px 7px;line-height:1.35;font-size:14px;
+      border-radius:13px
+    }
+    #locuraCompacto .pasos button[aria-pressed="true"]{
+      background:#71254f;border:2px solid #ff69be
+    }
+    #locuraCompacto .pasos button:disabled{opacity:.5}
+    #locuraCompacto p{font-size:13px;color:#e7d5e8;margin:12px 0 0}
+    #locuraRegistroCompacto{padding:10px;margin-bottom:12px}
+    #locuraRegistroCompacto>h2,
+    #locuraRegistroCompacto>.notice{display:none!important}
+    #locuraRegistroCompacto #locuraMultifoto{
+      border:0;padding:5px;margin:0
+    }
+    #locuraRegistroCompacto #locuraMultifoto>h2,
+    #locuraRegistroCompacto #locuraMultifoto>p.muted,
+    #locuraRegistroCompacto #locuraPhotoGuide,
+    #locuraRegistroCompacto #locuraDropArea{display:none!important}
+
+    #locuraRegistroCompacto[data-paso="foto"] #productForm,
+    #locuraRegistroCompacto[data-paso="foto"] #message,
+    #locuraRegistroCompacto[data-paso="foto"] #multiAnalyze,
+    #locuraRegistroCompacto[data-paso="foto"] #multiResult{
+      display:none!important
+    }
+    #locuraRegistroCompacto[data-paso="ia"] #productForm,
+    #locuraRegistroCompacto[data-paso="ia"] #message,
+    #locuraRegistroCompacto[data-paso="ia"] #locuraTools{
+      display:none!important
+    }
+    #locuraRegistroCompacto[data-paso="ia"]
+    #locuraMultifoto>:not(#multiAnalyze):not(#multiStatus):not(#multiResult){
+      display:none!important
+    }
+    #locuraRegistroCompacto[data-paso="ficha"] #locuraMultifoto,
+    #locuraRegistroCompacto[data-paso="ficha"] #locuraTools,
+    #locuraRegistroCompacto[data-paso="revision"] #locuraMultifoto,
+    #locuraRegistroCompacto[data-paso="revision"] #locuraTools{
+      display:none!important
+    }
+    #locuraExtra details{
+      margin:8px 0;padding:10px;
+      border:1px solid #65526b;border-radius:12px
+    }
+    #locuraExtra summary{cursor:pointer;font-weight:650}
+    #locuraExtra details>.panel{margin-top:12px}
+  `;
+  document.head.append(estilo);
+
+  const tablero = document.createElement('section');
+  tablero.id = 'locuraCompacto';
+  tablero.className = 'panel';
+
+  const titulo = document.createElement('h2');
+  titulo.textContent = '⚡ SUBASTAS RÁPIDAS · TODO EN UNO';
+
+  const pasos = document.createElement('div');
+  pasos.className = 'pasos';
+
+  const nota = document.createElement('p');
+  nota.textContent = 'Selecciona fotos y pulsa IA + Internet. Después revisa la ficha.';
+
+  tablero.append(titulo, pasos, nota);
+  app.prepend(tablero);
+
+  const tarjetas = [
+    ['📸', '1. Fotos y escáner', 'foto', true],
+    ['✨', '2. Fondo blanco (pendiente)', 'mejora', false],
+    ['🔎', '3. IA + Internet', 'ia', true],
+    ['📝', '4. Ficha automática', 'ficha', true],
+    ['✅', '5. Revisar estado y precio', 'revision', true],
+    ['🔨', '6. Subasta temporal (pendiente)', 'subasta', false]
+  ];
+
+  const buttons = [];
+
+  function abrir(paso, analizar = false) {
+    registro.dataset.paso = paso;
+
+    buttons.forEach(b => {
+      b.setAttribute('aria-pressed',
+        String(b.dataset.paso === paso));
+    });
+
+    if (paso === 'ia' && analizar) {
+      document.getElementById('multiAnalyze')?.click();
+    }
+
+    if (paso === 'revision') {
+      document.getElementById('condition')?.focus({preventScroll:true});
+    }
+
+    nota.textContent =
+      paso === 'foto' ? 'Elige fotos o usa la cámara. Hasta 6 imágenes.' :
+      paso === 'ia' ? 'La IA analiza las fotos y busca datos en Internet.' :
+      paso === 'ficha' ? 'Revisa la ficha antes de guardarla.' :
+      'Comprueba el estado real y el precio antes de guardar.';
+  }
+
+  tarjetas.forEach(([icono, texto, paso, activo]) => {
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.dataset.paso = paso;
+    boton.disabled = !activo;
+    boton.textContent = icono + ' ' + texto;
+    boton.addEventListener('click', () => abrir(paso, paso === 'ia'));
+    pasos.append(boton);
+    buttons.push(boton);
+  });
+
+  app.addEventListener('click', e => {
+    if (e.target?.closest?.('#multiAnalyze')) abrir('ia');
+  }, true);
+
+  abrir('foto');
+
+  const extras = document.createElement('section');
+  extras.id = 'locuraExtra';
+  app.append(extras);
+
+  const grupos = [
+    ['🔗 Conexión y cuenta', ['conectarTikTok', 'logout']],
+    ['📦 Productos guardados', ['items']]
+  ];
+
+  grupos.forEach(([nombre, ids]) => {
+    const detalle = document.createElement('details');
+    const resumen = document.createElement('summary');
+    resumen.textContent = nombre;
+    detalle.append(resumen);
+
+    ids.forEach(id => {
+      const panel = document.getElementById(id)?.closest('.panel');
+      if (panel && panel !== registro) detalle.append(panel);
+    });
+
+    extras.append(detalle);
+  });
+
+  const panelFinal = [...app.children].find(el =>
+    el.classList?.contains('panel') &&
+    el.querySelector('h2')?.textContent === 'Próximas integraciones'
+  );
+
+  if (panelFinal) {
+    const detalle = document.createElement('details');
+    const resumen = document.createElement('summary');
+    resumen.textContent = '⚙️ Otras opciones';
+    detalle.append(resumen, panelFinal);
+    extras.append(detalle);
+  }
+});
+</script>
+
 </body></html>
