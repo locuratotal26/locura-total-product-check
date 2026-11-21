@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOCURA TOTAL · Fondo blanco y limpieza</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#f7f3fa;background:#111018}
+*{box-sizing:border-box}body{margin:0}main{max-width:700px;margin:auto;padding:20px}
+h1{font-size:1.35rem;border-bottom:4px solid #ed38b0;padding-bottom:15px}
+.panel{background:#221d2a;border:1px solid #70526f;border-radius:16px;padding:18px;margin:16px 0}
+.choose,button,.download{display:block;width:100%;text-align:center;border:0;border-radius:11px;background:#ed38b0;color:#17101c;font:750 1rem system-ui;padding:16px;margin:12px 0;text-decoration:none;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}.secondary{background:#55445e;color:#fff}
+label{font-weight:650}input[type=file]{display:none}input[type=range]{width:100%;accent-color:#ed38b0}
+p{line-height:1.45}#status{color:#ffdc9b;white-space:pre-wrap;overflow-wrap:anywhere}
+#details{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;color:#ddc5dc}
+#output{display:none}#before{width:100%;max-height:420px;object-fit:contain;border-radius:10px}
+#stage{width:100%;height:auto;background:#fff;border-radius:12px;display:block;touch-action:none;cursor:crosshair;box-shadow:0 0 0 1px #888}
+#tools{display:none;border:1px solid #76536e;padding:14px;border-radius:12px;margin-top:12px}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.buttons button{font-size:.9rem;padding:12px}
+small{color:#c7b6c9}summary{cursor:pointer}
+</style>
+</head>
+<body><main>
+<h1>✨ LOCURA TOTAL · Fondo blanco + borrar objetos sobrantes</h1>
+<section class="panel">
+<p>Prueba independiente: acepta HEIC, JPG, PNG y WebP. Primero elimina el fondo con IA. Después puedes borrar con el dedo la silla u otros restos detrás del producto. No envía fotos a TikTok Shop ni Supabase.</p>
+<label class="choose" for="foto">📸 Elegir fotografía (también HEIC)</label>
+<input id="foto" type="file" accept="image/*,.heic,.heif,.hif">
+<p id="filename">Sin fotografía seleccionada</p>
+<button id="go" type="button" disabled>✨ Editar con fondo blanco</button>
+<p id="status" role="status">Selecciona una fotografía para empezar.</p>
+<details><summary>Detalles técnicos en caso de error</summary><p id="details">Sin errores.</p></details>
+<div id="output">
+<h3>Fotografía original</h3><img id="before" alt="Fotografía original">
+<h3>Foto con fondo blanco</h3><canvas id="stage" width="1600" height="1600" aria-label="Fotografía editada. Desliza el dedo para borrar elementos del fondo cuando se active la limpieza."></canvas>
+<div id="tools">
+<p><strong>🧽 Borrar objetos sobrantes</strong></p>
+<p>Desliza el dedo <strong>sobre la silla o el objeto que sobra</strong>. El pincel lo pinta de blanco. Procura no tocar la caja; si te equivocas, pulsa Deshacer.</p>
+<label for="brush">Tamaño del borrador: <span id="brushSize">110</span></label>
+<input id="brush" type="range" min="20" max="280" step="10" value="110">
+<div class="buttons"><button type="button" id="undo" class="secondary" disabled>↩ Deshacer</button><button type="button" id="reset" class="secondary">Restaurar edición</button></div>
+</div>
+<a class="download" id="download" download="locura-foto-limpia.png">Guardar foto limpia (PNG)</a>
+</div>
+</section>
+<p><small>Esta limpieza con el dedo es opcional para fotos difíciles; no es una eliminación automática garantizada. Conserva siempre la fotografía original. La foto solo se descarga en tu móvil cuando pulsas Guardar.</small></p>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let selected=null,urls=[],baseCanvas=null,strokes=[],currentStroke=null,downloading=false;
+const canvas=$('stage');const ctx=canvas.getContext('2d');
+const clearUrls=()=>{for(const u of urls)URL.revokeObjectURL(u);urls=[]};
+function fail(e){$('status').textContent='❌ '+(e?.message||String(e));$('details').textContent=e?.stack||String(e)}
+$('foto').addEventListener('change',()=>{
+ selected=$('foto').files?.[0]||null;$('filename').textContent=selected?.name||'Sin fotografía seleccionada';
+ $('go').disabled=!selected;$('status').textContent=selected?'Foto seleccionada. Pulsa Editar con fondo blanco.':'Selecciona una fotografía.';
+ $('output').style.display='none';$('tools').style.display='none';
+});
+function loadScript(src){return new Promise((resolve,reject)=>{
+ const tag=document.createElement('script');tag.src=src;tag.onload=resolve;tag.onerror=()=>reject(Error('No se pudo cargar el conversor HEIC.'));document.head.appendChild(tag);
+});}
+async function toJpg(f){
+ const isHeic=/\.(heic|heif|hif)$/i.test(f.name)||/^image\/(heic|heif|x-heic|x-heif)$/.test(f.type);
+ if(!isHeic)return f;
+ $('status').textContent='Convirtiendo HEIC a JPG…';
+ if(!window.HeicTo)await loadScript('https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js');
+ if(typeof window.HeicTo!=='function')throw Error('No se pudo cargar HeicTo.');
+ const jpg=await window.HeicTo({blob:f,type:'image/jpeg',quality:.96});
+ if(!jpg?.size)throw Error('HEIC no se pudo convertir.');
+ return new File([jpg],(f.name||'foto').replace(/\.(heic|heif|hif)$/i,'')+'.jpg',{type:'image/jpeg'});
+}
+async function getEditor(){
+ const errors=[];
+ for(const url of ['https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.1/+esm','https://esm.sh/@bg0/browser@0.1.1?bundle']){
+ try{const mod=await import(url);if(typeof mod.removeBackground==='function')return mod.removeBackground;throw Error('No hay función removeBackground');}
+ catch(e){errors.push(e?.message||String(e));}
+ }throw Error('Motor de IA no disponible: '+errors.join(' | '));
+}
+function ensureObject(){
+ const probe=document.createElement('canvas');probe.width=100;probe.height=100;
+ const c=probe.getContext('2d',{willReadFrequently:true});c.drawImage(canvas,0,0,100,100);
+ const p=c.getImageData(0,0,100,100).data;let n=0;
+ for(let i=0;i<p.length;i+=4)if(Math.min(p[i],p[i+1],p[i+2])<225)n++;
+ if(n<40)throw Error('La IA borró prácticamente todo el producto. No se acepta la imagen blanca.');
+}
+function points(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+function paint(points,width){
+ if(!points.length)return;
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#fff';ctx.fillStyle='#fff';ctx.lineWidth=width;
+ ctx.beginPath();ctx.arc(points[0].x,points[0].y,width/2,0,Math.PI*2);ctx.fill();
+ if(points.length>1){ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke();}
+}
+function redraw(){if(!baseCanvas)return;ctx.drawImage(baseCanvas,0,0);for(const s of strokes)paint(s.points,s.width);}
+function syncUndo(){$('undo').disabled=strokes.length===0;}
+async function updateDownload(){
+ if(downloading)return;downloading=true;
+ try{const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(!blob)throw Error('No se creó el PNG');
+ if($('download').dataset.url)URL.revokeObjectURL($('download').dataset.url);
+ const u=URL.createObjectURL(blob);$('download').dataset.url=u;$('download').href=u;
+ }finally{downloading=false;}
+}
+$('brush').addEventListener('input',()=>{$('brushSize').textContent=$('brush').value;});
+canvas.addEventListener('pointerdown',e=>{if(!baseCanvas)return;e.preventDefault();canvas.setPointerCapture(e.pointerId);currentStroke={width:Number($('brush').value),points:[points(e)]};paint(currentStroke.points,currentStroke.width);});
+canvas.addEventListener('pointermove',e=>{if(!currentStroke)return;e.preventDefault();const q=points(e),a=currentStroke.points;a.push(q);ctx.beginPath();ctx.strokeStyle='#fff';ctx.lineWidth=currentStroke.width;ctx.lineCap='round';ctx.moveTo(a[a.length-2].x,a[a.length-2].y);ctx.lineTo(q.x,q.y);ctx.stroke();});
+function finish(){if(!currentStroke)return;strokes.push(currentStroke);currentStroke=null;syncUndo();updateDownload().catch(fail);}
+canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
+$('undo').addEventListener('click',()=>{if(!strokes.length)return;strokes.pop();redraw();syncUndo();updateDownload().catch(fail);});
+$('reset').addEventListener('click',()=>{strokes=[];redraw();syncUndo();updateDownload().catch(fail);});
+$('go').addEventListener('click',async()=>{
+ if(!selected)return;$('go').disabled=true;$('output').style.display='none';$('details').textContent='';
+ clearUrls();if($('download').dataset.url){URL.revokeObjectURL($('download').dataset.url);delete $('download').dataset.url;}
+ try{
+ const f=await toJpg(selected);const u=URL.createObjectURL(f);urls.push(u);$('before').src=u;
+ $('status').textContent='Cargando IA…';const remove=await getEditor();
+ $('status').textContent='Quitando el fondo…';const result=await remove(f,{model:'lite',quality:'fast',onProgress:({stage,progress})=>{$('status').textContent=`IA: ${stage} (${Math.round((progress||0)*100)} %)`;}});
+ if(!result?.blob?.size)throw Error('La IA no creó una foto editada.');const bitmap=await createImageBitmap(result.blob);
+ try{
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,1600,1600);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ const k=Math.min(1460/bitmap.width,1460/bitmap.height);const w=bitmap.width*k,h=bitmap.height*k;ctx.drawImage(bitmap,(1600-w)/2,(1600-h)/2,w,h);
+ ensureObject();baseCanvas=document.createElement('canvas');baseCanvas.width=1600;baseCanvas.height=1600;baseCanvas.getContext('2d').drawImage(canvas,0,0);
+ strokes=[];currentStroke=null;syncUndo();$('output').style.display='block';$('tools').style.display='block';await updateDownload();
+ $('status').textContent='✅ Fondo blanco generado. Si quedaron objetos detrás, bórralos con el dedo y guarda el PNG.';
+ }finally{bitmap.close()}
+ }catch(e){baseCanvas=null;fail(e)}finally{$('go').disabled=false;}
+});
+</script>
+</body></html>
