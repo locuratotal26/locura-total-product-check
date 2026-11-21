@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOCURA TOTAL · Prueba HEIC + fondo blanco</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#f7f2fa;background:#111018}
+*{box-sizing:border-box}body{margin:0}main{max-width:680px;margin:0 auto;padding:20px}
+h1{font-size:1.4rem;border-bottom:4px solid #f13caf;padding-bottom:15px}
+.panel{background:#221d2a;border:1px solid #70526f;border-radius:16px;padding:18px;margin-top:16px}
+.choose,button,a.download{display:block;border:0;border-radius:12px;background:#ed38b0;color:#161019;padding:16px;text-align:center;font:750 1rem system-ui;cursor:pointer;text-decoration:none;width:100%;margin:12px 0}
+button:disabled{opacity:.5;cursor:wait}input{display:none}p{line-height:1.5}#status{white-space:pre-wrap;overflow-wrap:anywhere;color:#ffdb9a;min-height:3rem}
+#details{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;color:#d7c5db}#output{display:none}
+img{width:100%;display:block;max-height:490px;object-fit:contain;background:#fff;border-radius:12px;margin:9px 0}
+small{color:#bdb0c6}
+</style>
+</head>
+<body><main>
+<h1>✨ LOCURA TOTAL · Prueba HEIC y fondo blanco</h1>
+<section class="panel">
+<p>Esta prueba acepta HEIC, HEIF, JPG, PNG y WebP. Convierte HEIC automáticamente antes de editar. No guarda imágenes en Supabase ni las envía a TikTok Shop.</p>
+<label for="foto" class="choose">📸 Seleccionar foto (también HEIC)</label>
+<input id="foto" type="file" accept="image/*,.heic,.heif,.hif">
+<p id="filename">Sin foto seleccionada</p>
+<button id="go" type="button" disabled>✨ Convertir y editar con fondo blanco</button>
+<p id="status" role="status" aria-live="polite">Selecciona una fotografía.</p>
+<details><summary>Detalles técnicos si falla</summary><p id="details">Sin errores.</p></details>
+<div id="output"><h3>Antes de editar</h3><img id="before" alt="Fotografía antes de editar"><h3>Después de editar</h3><img id="after" alt="Fotografía editada con fondo blanco"><a id="download" class="download" download="locura-editada-prueba.png">Guardar foto editada PNG</a></div>
+</section>
+<p><small>La conversión se hace en el navegador. La IA puede recortar incorrectamente algunos objetos oscuros; si detectamos una imagen prácticamente blanca, la rechazamos para que no se confunda con una edición válida. Usa Wi‑Fi.</small></p>
+</main>
+<script type="module">
+const $ = id => document.getElementById(id);
+let selected = null;
+let urls = [];
+const clearUrls = () => {urls.forEach(u=>URL.revokeObjectURL(u));urls=[]};
+const showError = e => {$('status').textContent='❌ No se completó: '+(e?.message||String(e));$('details').textContent=e?.stack||String(e)};
+$('foto').addEventListener('change',()=>{
+ selected=$('foto').files?.[0]||null;
+ $('filename').textContent=selected?selected.name:'Sin foto seleccionada';
+ $('go').disabled=!selected;
+ $('status').textContent=selected?'Foto elegida. Pulsa Convertir y editar.':'Selecciona una fotografía.';
+ $('output').style.display='none';
+});
+function loadScript(src) {
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=src;script.onload=resolve;
+  script.onerror=()=>reject(new Error('No se pudo cargar el conversor HEIC. Comprueba tu conexión.'));
+  document.head.appendChild(script);
+ });
+}
+async function toSupportedImage(file){
+ const heic=/\.(heic|heif|hif)$/i.test(file.name)||/^image\/(heic|heif|x-heic|x-heif)$/i.test(file.type);
+ if(!heic)return file;
+ $('status').textContent='Convirtiendo HEIC a JPG sin cambiar tu archivo original…';
+ if(!window.HeicTo){
+  await loadScript('https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js');
+ }
+ if(typeof window.HeicTo!=='function')throw new Error('El conversor HEIC no se ha cargado.');
+ const jpg=await window.HeicTo({blob:file,type:'image/jpeg',quality:0.96});
+ if(!jpg?.size)throw new Error('La conversión HEIC no devolvió una imagen válida.');
+ return new File([jpg],(file.name||'foto').replace(/\.(heic|heif|hif)$/i,'')+'.jpg',{type:'image/jpeg'});
+}
+async function getEditor(){
+ const servers=['https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.1/+esm','https://esm.sh/@bg0/browser@0.1.1?bundle'];
+ const errors=[];
+ for(const server of servers){
+  try{const pkg=await import(server);if(typeof pkg.removeBackground==='function')return pkg.removeBackground;throw Error('Módulo sin removeBackground');}
+  catch(err){errors.push((err?.message||String(err)).slice(0,160));}
+ }
+ throw Error('No se pudo cargar la IA: '+errors.join(' · '));
+}
+function validateForeground(bitmap){
+ const probe=document.createElement('canvas'); probe.width=120;probe.height=120;
+ const c=probe.getContext('2d',{willReadFrequently:true});
+ c.fillStyle='#fff';c.fillRect(0,0,120,120);
+ const scale=Math.min(120/bitmap.width,120/bitmap.height);
+ const w=bitmap.width*scale,h=bitmap.height*scale;
+ c.drawImage(bitmap,(120-w)/2,(120-h)/2,w,h);
+ const pixels=c.getImageData(0,0,120,120).data;
+ let visible=0;
+ for(let k=0;k<pixels.length;k+=4){if(Math.min(pixels[k],pixels[k+1],pixels[k+2])<230)visible++;}
+ if(visible/14400<0.004)throw Error('La IA eliminó casi todo el producto (imagen blanca). No se acepta esta edición; conserva la original.');
+}
+$('go').addEventListener('click',async()=>{
+ if(!selected)return;
+ $('go').disabled=true;$('output').style.display='none';$('details').textContent='';
+ clearUrls();
+ try{
+  const ready=await toSupportedImage(selected);
+  const original=URL.createObjectURL(ready); urls.push(original);$('before').src=original;
+  $('status').textContent='Cargando el motor de edición…';
+  const removeBackground=await getEditor();
+  $('status').textContent='Eliminando el fondo…';
+  const removal=await removeBackground(ready,{model:'lite',quality:'fast',onProgress:({stage,progress})=>{
+   $('status').textContent='IA: '+stage+' '+Math.round((progress||0)*100)+' %';
+  }});
+  if(!removal?.blob?.size)throw Error('La IA no generó una imagen.');
+  const bitmap=await createImageBitmap(removal.blob);
+  try{
+   validateForeground(bitmap);
+   const SIZE=1600,PAD=70;
+   const canvas=document.createElement('canvas');canvas.width=SIZE;canvas.height=SIZE;
+   const ctx=canvas.getContext('2d');
+   ctx.fillStyle='#fff';ctx.fillRect(0,0,SIZE,SIZE);
+   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   const k=Math.min((SIZE-PAD*2)/bitmap.width,(SIZE-PAD*2)/bitmap.height);
+   const w=bitmap.width*k,h=bitmap.height*k;
+   ctx.drawImage(bitmap,(SIZE-w)/2,(SIZE-h)/2,w,h);
+   const output=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+   if(!output?.size)throw Error('No se pudo crear el PNG editado');
+   const resultUrl=URL.createObjectURL(output);urls.push(resultUrl);
+   $('after').src=resultUrl;$('download').href=resultUrl;$('output').style.display='block';
+   $('status').textContent='✅ Producto detectado en la edición. Comprueba los bordes y la nitidez.';
+  }finally{bitmap.close()}
+ }catch(err){showError(err)}finally{$('go').disabled=false}
+});
+</script>
+</body></html>
