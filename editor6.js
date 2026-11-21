@@ -31,8 +31,8 @@
   // Se importa solo cuando hace falta. La primera descarga del modelo ligero
   // ronda los 100 MB. Puede tardar según red, dispositivo y navegador.
   function loadEditor() {
-    enginePromise ||= import('https://esm.sh/@bg0/browser@0.1.2?bundle')
-      .then(module => {
+enginePromise ||= import('https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.2/+esm')
+    .then(module => {
         if (typeof module.removeBackground !== 'function') {
           throw new Error('No se pudo cargar el motor de IA.');
         }
