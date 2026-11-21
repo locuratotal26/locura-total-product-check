@@ -197,7 +197,21 @@
         note.className = 'notice';
         note.textContent = '✅ Ficha editable rellenada. Revisa fabricante, peso, estado y autenticidad. El precio de venta lo eliges tú. Todavía no se ha guardado ni publicado.';
         webSection.append(note);
-        result.append(webSection);
+         if (w && !verifiedMatch && !webData?.identity_unverified) {
+  addLine(webSection, 'Modelo posible (sin confirmar)', w.model);
+  addLine(webSection, 'Fabricante posible (sin confirmar)', w.manufacturer);
+  if (w.weight_kg > 0)
+    addLine(webSection, 'Peso de referencia (sin confirmar)', w.weight_kg + ' kg');
+  if (w.market_price_eur > 0)
+    addLine(webSection, 'Precio web de referencia (sin confirmar)', w.market_price_eur + ' €');
+}
+
+form.querySelector('#referenciasWebFicha')?.remove();
+const copiaWeb = webSection.cloneNode(true);
+copiaWeb.id = 'referenciasWebFicha';
+form.append(copiaWeb);
+result.append(webSection);
+
         result.hidden = false;
         status.textContent = warning
           ? '✅ IA completada y ficha rellena. ' + warning
