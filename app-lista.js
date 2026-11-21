@@ -89,8 +89,9 @@
       const files = selected.length ? selected.slice(0, MAX) : [...($('photo')?.files || [])].slice(0, 1);
       const row = {
         name: textValue('name'), barcode: valueOrNull('barcode'), brand: valueOrNull('brand'),
-        manufacturer: valueOrNull('manufacturer'),
-        weight: textValue('weight') === '' ? null : Number(textValue('weight')),
+        manufacturer: valueOrNull('manufacturer'),  
+         model: valueOrNull('model'),
+   weight: textValue('weight') === '' ? null : Number(textValue('weight')),
         price: textValue('price') === '' ? null : Number(textValue('price')),
         condition: textValue('condition'), auth: textValue('auth'),
         features: valueOrNull('features'), approved: false
