@@ -1077,7 +1077,12 @@ window.addEventListener('DOMContentLoaded', () => {
     boton.dataset.paso = paso;
     boton.disabled = !activo;
     boton.textContent = icono + ' ' + texto;
-    boton.addEventListener('click', () => abrir(paso, paso === 'ia'));
+    
+boton.addEventListener('click', () => {
+  abrir(paso, paso === 'ia');
+  if (paso === 'foto') document.getElementById('locuraChooseMany')?.click();
+});
+
     pasos.append(boton);
     buttons.push(boton);
   });
