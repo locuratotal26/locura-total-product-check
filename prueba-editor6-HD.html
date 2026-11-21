@@ -29,7 +29,7 @@ $('go').addEventListener('click',async()=>{
    }
    if(!removeBackground)throw Error('No se pudo cargar el motor de IA desde ninguno de los dos servidores.\n'+errors.join('\n'));
    $('status').textContent='Preparando foto…';
-   const result=await removeBackground(file,{model:$('modo').value,quality:'quality',onProgress:({stage,progress,message})=>{$('status').textContent='IA: '+(message||stage)+' '+Math.round((progress||0)*100)+' %';}});
+   const result=await removeBackground(file,{model:$('modo').value,quality:'fast',onProgress:({stage,progress,message})=>{$('status').textContent='IA: '+(message||stage)+' '+Math.round((progress||0)*100)+' %';}});
    if(!result?.blob)throw Error('La IA no devolvió una imagen editada.');
    const bmp=await createImageBitmap(result.blob);
    try{const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=2048;const c=canvas.getContext('2d');if(!c)throw Error('No se pudo crear el lienzo HD.');c.fillStyle='#fff';c.fillRect(0,0,2048,2048);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';const k=Math.min(1920/bmp.width,1920/bmp.height);const w=bmp.width*k,h=bmp.height*k;c.drawImage(bmp,(2048-w)/2,(2048-h)/2,w,h);if(imageURL)URL.revokeObjectURL(imageURL);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw Error('No se pudo crear la imagen PNG.');imageURL=URL.createObjectURL(blob);$('preview').src=imageURL;$('download').href=imageURL;$('download').style.display='block';$('result').style.display='block';$('status').textContent='✅ FOTO HD EDITADA con fondo blanco. Amplía el resultado para comprobar los bordes.';}finally{bmp.close();}
