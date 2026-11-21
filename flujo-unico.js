@@ -133,6 +133,32 @@
           });
           if (error || data?.error) throw new Error(data?.error || error.message);
           webData = data;
+           
+const marcaCoincide = brand && w?.brand &&
+  normalized(brand) === normalized(w.brand);
+
+const modeloFoto = /^(no |sin |desconocido|pendiente)/i.test(model)
+  ? '' : model;
+
+const modeloPropuesto = modeloFoto ||
+  (marcaCoincide && !webData?.identity_unverified
+    ? clean(w.model) : '');
+
+if (modeloPropuesto) {
+  fillEmpty('model', modeloPropuesto);
+  const etiqueta = document.querySelector('label[for="model"]');
+  if (etiqueta) {
+    etiqueta.textContent = 'Modelo del producto (verificar)';
+  }
+}
+
+const fabricanteCampo = $('manufacturer');
+if (fabricanteCampo &&
+    /^(no verificad|sin verific|no identificad|probable|desconocid)/i
+      .test(clean(fabricanteCampo.value))) {
+  fabricanteCampo.value = '';
+}
+
         } catch (error) {
           warning = 'La búsqueda web no se pudo completar (' + (error?.message || 'sin conexión') + '). La ficha de las fotografías sí está preparada.';
         }
