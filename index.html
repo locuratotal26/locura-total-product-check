@@ -874,4 +874,80 @@ const {data,error}=await db.auth.getSession();if(error)loginMessage(errText(erro
 <script src="camara6.js"></script>
   <script src="app-lista.js"></script>
   <script src="flujo-unico.js"></script>
+
+<script>
+window.addEventListener("DOMContentLoaded", () => {
+  const app = document.getElementById("app");
+  if (!app) return;
+
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <h2>🛍️ Conectar TikTok Shop</h2>
+    <p>Autoriza tu tienda LOCURA TOTAL.</p>
+    <button type="button" id="conectarTikTok">
+      Conectar mi tienda
+    </button>
+    <p id="estadoTikTok" role="status"></p>
+  `;
+  app.prepend(panel);
+
+  const boton = document.getElementById("conectarTikTok");
+  const estado = document.getElementById("estadoTikTok");
+  const API = "https://bepeiatxumpovpijmwmc.supabase.co/functions/v1/tiktok-shop-auth";
+
+  async function consultar(ruta) {
+    const db = window.locuraDb;
+    if (!db) throw new Error("Supabase no está preparado");
+
+    const { data } = await db.auth.getSession();
+    if (!data?.session) {
+      throw new Error("Primero inicia sesión en la aplicación");
+    }
+
+    const respuesta = await fetch(API + ruta, {
+      headers: {
+        Authorization: "Bearer " + data.session.access_token
+      },
+      cache: "no-store"
+    });
+
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) {
+      throw new Error(resultado.error || "Error de conexión");
+    }
+    return resultado;
+  }
+
+  boton.onclick = async () => {
+    boton.disabled = true;
+    estado.textContent = "Preparando autorización...";
+
+    try {
+      const datos = await consultar("/start");
+      const destino = new URL(datos.authorize_url);
+
+      if (destino.origin !== "https://services.tiktokshop.com") {
+        throw new Error("Dirección de autorización no válida");
+      }
+
+      window.location.assign(destino.href);
+    } catch (error) {
+      estado.textContent = error.message;
+      boton.disabled = false;
+    }
+  };
+
+  consultar("/status")
+    .then(datos => {
+      estado.textContent = datos.connected
+        ? "✅ Tienda TikTok Shop autorizada"
+        : "Pendiente de conectar tu tienda";
+    })
+    .catch(() => {
+      estado.textContent = "Inicia sesión para comprobar la conexión";
+    });
+});
+</script>
+
 </body></html>
