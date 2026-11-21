@@ -156,8 +156,10 @@ $('productForm').querySelector('.grid').after(ficha);
         brand: p.brand,
         manufacturer: p.manufacturer,
         barcode: p.barcode,
-        weight: p.weight_kg
-      })) {
+ 
+weight: p.weight_kg,
+marketPrice: p.market_price_eur
+     })) {
         const campo = $(id);
         if (campo && !campo.value && valor != null) {
           campo.value = String(valor);
