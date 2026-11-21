@@ -16,8 +16,12 @@ window.addEventListener('DOMContentLoaded',async()=>{
 // CONFIGURACIÓN: cambia únicamente los dos valores siguientes.
 const SUPABASE_URL='https://bepeiatxumpovpijmwmc.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_0wtlABuFC4F1m88EY2Pv3w_9HEHTD0f';
-const $=id=>document.getElementById(id);
-const configured=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL)&&SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+const $=id=>document.getElementById(id); 
+const campoModelo = document.createElement('div');
+campoModelo.innerHTML = '<label for="model">Modelo del producto</label><input id="model" placeholder="Modelo pendiente de verificar">';
+$('name').parentElement.after(campoModelo);
+
+const configured=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL)&&SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_'); 
 if(!configured||!window.supabase){$('setup').classList.remove('hidden');if(configured)$('setup').insertAdjacentText('beforeend',' No se pudo cargar la biblioteca de Supabase. Revisa tu conexión.');return}
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
   window.locuraDb = db;
