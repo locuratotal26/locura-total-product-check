@@ -147,7 +147,8 @@ $('productForm').querySelector('.grid').after(ficha);
 
     if (confirm('¿Añadir los datos encontrados a la ficha?')) {
       for (const [id, valor] of Object.entries({
-        name: p.name,
+        name: p.name, 
+        model: p.model,
         brand: p.brand,
         manufacturer: p.manufacturer,
         barcode: p.barcode,
