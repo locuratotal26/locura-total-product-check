@@ -991,6 +991,11 @@ window.addEventListener('DOMContentLoaded', () => {
     #locuraRegistroCompacto #locuraPhotoGuide,
     #locuraRegistroCompacto #locuraDropArea{display:none!important}
 
+/* Ocultar el cuadro grande Fotografías */
+#locuraRegistroCompacto[data-paso="foto"] #locuraMultifoto {
+  display: none !important;
+}
+
     #locuraRegistroCompacto[data-paso="foto"] #productForm,
     #locuraRegistroCompacto[data-paso="foto"] #message,
     #locuraRegistroCompacto[data-paso="foto"] #multiAnalyze,
