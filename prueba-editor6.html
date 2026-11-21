@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOCURA TOTAL · Prueba de edición de fotos</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#f7f3fa;background:#111018}*{box-sizing:border-box}body{margin:0}main{width:min(680px,100%);margin:auto;padding:20px}h1{font-size:1.3rem;border-bottom:3px solid #ef38ad;padding-bottom:14px}.panel{padding:20px;background:#221e2b;border:1px solid #76536e;border-radius:16px;margin:15px 0}p{line-height:1.5}button,.choose{display:block;width:100%;padding:16px;border:0;border-radius:11px;background:#ed38b0;color:#180d19;font-weight:800;font-size:1rem;text-align:center;cursor:pointer;margin:12px 0}button:disabled{opacity:.5;cursor:wait}input{display:none}#status{color:#ffe0a8;white-space:pre-wrap;overflow-wrap:anywhere;min-height:48px}#details{font-size:.76rem;white-space:pre-wrap;overflow-wrap:anywhere;color:#d0bbd6}#result{display:none;max-width:350px;margin:15px auto;background:#fff;border-radius:12px;padding:8px}#result img{width:100%;height:auto;display:block}small{color:#c8b7cc}
+</style>
+</head><body><main><h1>✨ LOCURA TOTAL · Prueba de fondo blanco</h1>
+<div class="panel"><p>Esta prueba es independiente de la aplicación principal. No guarda ni envía fotografías a TikTok Shop o Supabase.</p>
+<label class="choose" for="foto">📸 Elegir una foto JPG o PNG</label><input id="foto" type="file" accept="image/jpeg,image/png,image/webp">
+<p id="filename">Todavía no has seleccionado una foto.</p>
+<button type="button" id="go" disabled>✨ Editar una foto automáticamente</button>
+<p id="status" role="status">Selecciona una foto para comenzar.</p><details><summary>Detalles técnicos (si aparece un error)</summary><p id="details">Sin errores.</p></details>
+<div id="result"><img id="preview" alt="Imagen editada con fondo blanco"></div>
+</div><p><small>El modelo puede requerir una descarga considerable la primera vez. Usa Wi‑Fi. Si no funciona, haz una captura del error; no afecta a la app principal.</small></p></main>
+<script type="module">
+const $=id=>document.getElementById(id);let file=null;let imageURL=null;
+$('foto').addEventListener('change',()=>{file=$('foto').files[0]||null;$('go').disabled=!file;$('filename').textContent=file?file.name:'Ninguna foto seleccionada';$('status').textContent=file?'Foto elegida. Pulsa Editar.':'Selecciona una foto.';$('result').style.display='none';});
+$('go').addEventListener('click',async()=>{
+ if(!file)return; $('go').disabled=true;$('details').textContent='';$('result').style.display='none';
+ const addresses=['https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.1/+esm','https://esm.sh/@bg0/browser@0.1.1?bundle'];
+ let removeBackground;let errors=[];
+ try{
+   for(const address of addresses){
+     $('status').textContent='Comprobando motor de IA…';
+     try{const m=await import(address);if(typeof m.removeBackground!=='function')throw Error('El módulo no contiene removeBackground');removeBackground=m.removeBackground; $('details').textContent='Módulo cargado desde: '+address;break}
+     catch(error){errors.push(address+' — '+String(error?.message||error));}
+   }
+   if(!removeBackground)throw Error('No se pudo cargar el motor de IA desde ninguno de los dos servidores.\n'+errors.join('\n'));
+   $('status').textContent='Preparando foto…';
+   const result=await removeBackground(file,{model:'lite',quality:'fast',onProgress:({stage,progress,message})=>{$('status').textContent='IA: '+(message||stage)+' '+Math.round((progress||0)*100)+' %';}});
+   if(!result?.blob)throw Error('La IA no devolvió una imagen editada.');
+   const bmp=await createImageBitmap(result.blob);
+   try{const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;const c=canvas.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,1200,1200);const k=Math.min(1070/bmp.width,1070/bmp.height);const w=bmp.width*k,h=bmp.height*k;c.drawImage(bmp,(1200-w)/2,(1200-h)/2,w,h);if(imageURL)URL.revokeObjectURL(imageURL);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.9));if(!blob)throw Error('No se pudo crear la imagen JPG.');imageURL=URL.createObjectURL(blob);$('preview').src=imageURL;$('result').style.display='block';$('status').textContent='✅ FOTO EDITADA con fondo blanco. La prueba ha funcionado.';}finally{bmp.close();}
+ }catch(error){$('status').textContent='❌ Error: '+String(error?.message||error);$('details').textContent+= '\n'+String(error?.stack||error);}
+ finally{$('go').disabled=false;}
+});
+</script></body></html>
