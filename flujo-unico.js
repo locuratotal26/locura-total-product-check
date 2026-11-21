@@ -164,6 +164,20 @@ if (fabricanteCampo &&
           warning = 'La búsqueda web no se pudo completar (' + (error?.message || 'sin conexión') + '). La ficha de las fotografías sí está preparada.';
         }
         const w = webData?.product;
+
+         
+const precioWeb = Number(w?.market_price_eur);
+
+if (
+  !webData?.identity_unverified &&
+  brand && w?.brand &&
+  normalized(brand) === normalized(w.brand) &&
+  Number.isFinite(precioWeb) &&
+  precioWeb > 0
+) {
+  fillEmpty('marketPrice', precioWeb);
+}
+
         const identityMatches = Boolean(
           (barcode && w?.barcode && normalized(barcode) === normalized(w.barcode)) ||
           (brand && model && w?.brand && w?.model &&
