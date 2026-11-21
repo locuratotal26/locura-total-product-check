@@ -78,6 +78,34 @@ $('consultarWeb').onclick = async () => {
     }
 
     const p = data.product;
+    
+const ficha = $('datosWebFicha') || document.createElement('section');
+ficha.id = 'datosWebFicha';
+ficha.className = 'panel';
+ficha.replaceChildren();
+
+const titulo = document.createElement('h3');
+titulo.textContent = '🌐 Datos encontrados (pendientes de verificar)';
+ficha.append(titulo);
+
+const datos = [
+  ['Modelo', p.model],
+  ['Fabricante propuesto', p.manufacturer],
+  ['Web fabricante', p.manufacturer_url],
+  ['Peso (kg)', p.weight_kg],
+  ['Precio orientativo (€)', p.market_price_eur],
+  ['Características', p.features],
+  ['Observaciones', p.warnings]
+];
+
+for (const [nombre, valor] of datos) {
+  if (valor === null || valor === undefined || String(valor).trim() === '') continue;
+  const fila = document.createElement('p');
+  fila.textContent = nombre + ': ' + valor;
+  ficha.append(fila);
+}
+
+$('productForm').querySelector('.grid').after(ficha);
 
     resultado.textContent = [
       'Nombre: ' + (p.name || 'Sin datos'),
