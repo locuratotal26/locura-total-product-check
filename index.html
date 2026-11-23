@@ -1082,19 +1082,77 @@ window.addEventListener('DOMContentLoaded', () => {
   tablero.append(titulo, pasos, nota);
   app.prepend(tablero);
 
+const panelSubasta = document.createElement('section');
+panelSubasta.id = 'locuraPreparacionSubasta';
+panelSubasta.className = 'panel hidden';
+
+panelSubasta.innerHTML = `
+  <h3>🔨 Preparar subasta temporal</h3>
+  <p>Modo preparación. No publica en TikTok Shop.</p>
+
+  <p id="locuraSubastaProducto">Producto: pendiente</p>
+  <p id="locuraSubastaEstado">Estado: pendiente</p>
+
+  <label for="locuraPuja">Puja inicial (€)</label>
+  <input id="locuraPuja" type="number"
+         min="0.01" step="0.01" placeholder="3.00">
+
+  <button type="button" id="locuraRevisar" disabled>
+    Revisar subasta
+  </button>
+  <p id="locuraSubastaAviso"></p>
+`;
+
+tablero.append(panelSubasta);
+
+const botonRevisar = document.getElementById('locuraRevisar');
+botonRevisar.disabled = false;
+
+botonRevisar.addEventListener('click', () => {
+  const nombre = document.getElementById('name').value.trim();
+  const estado = document.getElementById('condition').value;
+  const valor = document.getElementById('locuraPuja').value;
+  const puja = Number(valor);
+  const aviso = document.getElementById('locuraSubastaAviso');
+
+  if (!nombre || !valor || !Number.isFinite(puja) || puja <= 0) {
+    aviso.textContent = 'Completa el producto y la puja inicial.';
+    return;
+  }
+
+  aviso.textContent =
+    '✅ Producto: ' + nombre +
+    ' | Estado: ' + estado +
+    ' | Puja inicial: ' + puja.toFixed(2) +
+    ' €. Preparado, pero NO publicado en TikTok.';
+});
+
   const tarjetas = [
     ['📸', '1. Fotos y escáner', 'foto', true],   
 ['✨', '2. Editar fotos automáticamente', 'mejora', false],
     ['🔎', '3. IA + Internet', 'ia', true],
     ['📝', '4. Ficha automática', 'ficha', true],
     ['✅', '5. Revisar estado y precio', 'revision', true],
-    ['🔨', '6. Subasta temporal (pendiente)', 'subasta', false]
+    ['🔨', '6. preparar Subasta temporal', 'subasta', true]
   ];
 
   const buttons = [];
 
   function abrir(paso, analizar = false) {
     registro.dataset.paso = paso;
+
+panelSubasta.classList.toggle('hidden', paso !== 'subasta');
+
+if (paso === 'subasta') {
+  const nombre = document.getElementById('name').value.trim();
+  const estado = document.getElementById('condition').value;
+
+  document.getElementById('locuraSubastaProducto').textContent =
+    'Producto: ' + (nombre || 'pendiente');
+
+  document.getElementById('locuraSubastaEstado').textContent =
+    'Estado: ' + estado;
+}
 
     buttons.forEach(b => {
       b.setAttribute('aria-pressed',
