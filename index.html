@@ -1162,12 +1162,26 @@ if (!resumen) {
   panelSubasta.querySelector('label[for="locuraPuja"]').before(resumen);
 }
 
+const descripcionCompleta =
+  document.getElementById('features')?.value.trim() || '';
+
+const descripcionBase = descripcionCompleta
+  .split(/Datos web pendientes de verificar:/i)[0]
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const descripcionBreve = descripcionBase.length > 180
+  ? descripcionBase.slice(0, 180).replace(/\s+\S*$/, '') + '…'
+  : descripcionBase;
+
 resumen.textContent = [
   'Marca: ' + (document.getElementById('brand')?.value || 'Pendiente'),
-  'Modelo: ' + (document.getElementById('model')?.value || 'Pendiente'),
+  'Modelo (verificar): ' + (document.getElementById('model')?.value || 'Pendiente'),
   'Fotos seleccionadas: ' + document.querySelectorAll('#multiThumbs > div').length + '/6',
-  'Descripción: ' + (document.getElementById('features')?.value.trim() || 'Pendiente')
+  'Descripción breve: ' + (descripcionBreve || 'Pendiente'),
+  '⚠️ Comprueba modelo y estado antes de publicar.'
 ].join('\n');
+
 
 let vistaFotos = document.getElementById('locuraFotosSubasta');
 
