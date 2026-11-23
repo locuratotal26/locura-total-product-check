@@ -633,3 +633,99 @@ result.append(webSection);
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
+/* LOCURA TOTAL - MODO RAPIDO */
+(() => {
+  'use strict';
+  if (window.locuraModoRapido2026) return;
+  window.locuraModoRapido2026 = true;
+  const $ = id => document.getElementById(id);
+
+  function iniciar() {
+    const thumbs = $('multiThumbs');
+    const analizar = $('multiAnalyze');
+    const estado = $('multiStatus');
+    if (!thumbs || !analizar || !estado) return;
+
+    let automatico = true;
+    let anterior = thumbs.children.length;
+    let temporizador = null;
+    let interno = false;
+    let esperando = false;
+    let desdeCamara = false;
+
+    document.addEventListener('click', ev => {
+      if (ev.target?.closest?.('#locuraUse')) {
+        desdeCamara = true;
+        esperando = automatico;
+        setTimeout(() => { desdeCamara = false; }, 20000);
+      }
+      if (ev.target?.closest?.('#multiAnalyze') && !interno) {
+        clearTimeout(temporizador);
+      }
+    }, true);
+
+    new MutationObserver(() => {
+      const cantidad = thumbs.children.length;
+      if (cantidad === anterior) return;
+      anterior = cantidad;
+      clearTimeout(temporizador);
+      if (!cantidad) { esperando = false; return; }
+      if (desdeCamara) {
+        desdeCamara = false;
+        return;
+      }
+      if (!automatico) return;
+      temporizador = setTimeout(() => {
+        if (!thumbs.children.length || analizar.disabled) return;
+        esperando = true;
+        interno = true;
+        try { analizar.click(); }
+        finally { interno = false; }
+      }, 650);
+    }).observe(thumbs, { childList: true });
+
+    new MutationObserver(() => {
+      if (!esperando) return;
+      const mensaje = estado.textContent || '';
+      if (/ficha rellena|ficha lista para revisar/i.test(mensaje)) {
+        esperando = false;
+        document.querySelector(
+          '#locuraCompacto button[data-paso="ficha"]'
+        )?.click();
+      } else if (/^Error:|No se pudo completar todo el proceso/i.test(mensaje)) {
+        esperando = false;
+      }
+    }).observe(estado, {
+      childList: true, characterData: true, subtree: true
+    });
+
+    setTimeout(() => {
+      const tablero = $('locuraCompacto');
+      if (!tablero || $('locuraActivarRapido')) return;
+      const etiqueta = document.createElement('label');
+      etiqueta.style.cssText =
+        'display:flex;align-items:center;gap:10px;margin:10px 0;padding:12px;border:1px solid #aa6694;border-radius:12px;color:white;font-weight:700';
+      const control = document.createElement('input');
+      control.type = 'checkbox';
+      control.id = 'locuraActivarRapido';
+      control.checked = true;
+      control.style.cssText = 'width:22px;height:22px';
+      const nombre = document.createElement('span');
+      nombre.textContent =
+        '⚡ Modo rápido: analizar automáticamente al elegir fotos';
+      etiqueta.append(control, nombre);
+      tablero.querySelector('h2')?.after(etiqueta);
+      control.addEventListener('change', () => {
+        automatico = control.checked;
+        if (!automatico) {
+          clearTimeout(temporizador);
+          esperando = false;
+        }
+      });
+    }, 0);
+  }
+
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', iniciar, { once: true });
+  else iniciar();
+})();
