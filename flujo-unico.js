@@ -201,7 +201,6 @@ if (
           if (typeof w.market_price_eur === 'number' && w.market_price_eur > 0)
             addLine(webSection, 'Precio web orientativo (no precio de venta)', w.market_price_eur + ' €');
           addLine(webSection, 'Avisos', w.warnings);
-          fillEmpty('manufacturer', w.manufacturer);
           if (typeof w.weight_kg === 'number' && w.weight_kg > 0) fillEmpty('weight', w.weight_kg);
           if (clean(w.features)) {
             const features = $('features');
