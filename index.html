@@ -1100,6 +1100,11 @@ panelSubasta.innerHTML = `
   <button type="button" id="locuraRevisar" disabled>
     Revisar subasta
   </button>
+  
+<button type="button" id="locuraCopiarFicha" disabled>
+  📋 Copiar ficha de subasta
+</button>
+
   <p id="locuraSubastaAviso"></p>
 `;
 
@@ -1130,6 +1135,52 @@ if (!estado || estado === 'Sin comprobar') {
     ' | Estado: ' + estado +
     ' | Puja inicial: ' + puja.toFixed(2) +
     ' €. Preparado, pero NO publicado en TikTok.';
+});
+
+const botonCopiar = document.getElementById('locuraCopiarFicha');
+
+botonRevisar.addEventListener('click', () => {
+  const aviso = document.getElementById('locuraSubastaAviso');
+  botonCopiar.disabled = !aviso.textContent.startsWith('✅ Producto:');
+});
+
+botonCopiar.addEventListener('click', async () => {
+  const nombre = document.getElementById('name').value.trim();
+  const estado = document.getElementById('condition').value;
+  const marca = document.getElementById('brand').value.trim();
+  const modelo = document.getElementById('model').value.trim();
+  const valor = document.getElementById('locuraPuja').value;
+  const puja = Number(valor);
+
+  if (!nombre || !valor || !Number.isFinite(puja) ||
+      puja <= 0 || !estado || estado === 'Sin comprobar') {
+    document.getElementById('locuraSubastaAviso').textContent =
+      '⚠️ Revisa el producto, su estado y la puja.';
+    botonCopiar.disabled = true;
+    return;
+  }
+
+  const descripcion = document.getElementById('features').value
+    .split(/Datos web pendientes de verificar:/i)[0]
+    .replace(/\s+/g, ' ').trim().slice(0, 180);
+
+  const texto = [
+    'Producto: ' + nombre,
+    'Marca: ' + (marca || 'Sin verificar'),
+    'Modelo (verificar): ' + (modelo || 'Pendiente'),
+    'Estado: ' + estado,
+    'Descripción: ' + descripcion,
+    'Puja inicial: ' + puja.toFixed(2) + ' €'
+  ].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    document.getElementById('locuraSubastaAviso').textContent =
+      '✅ Ficha copiada correctamente. No publicada en TikTok.';
+  } catch (error) {
+    document.getElementById('locuraSubastaAviso').textContent =
+      '⚠️ No se pudo copiar la ficha.';
+  }
 });
 
   const tarjetas = [
