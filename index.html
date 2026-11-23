@@ -1152,6 +1152,23 @@ if (paso === 'subasta') {
 
   document.getElementById('locuraSubastaEstado').textContent =
     'Estado: ' + estado;
+  
+let resumen = document.getElementById('locuraDatosSubasta');
+
+if (!resumen) {
+  resumen = document.createElement('p');
+  resumen.id = 'locuraDatosSubasta';
+  resumen.style.whiteSpace = 'pre-line';
+  panelSubasta.querySelector('label[for="locuraPuja"]').before(resumen);
+}
+
+resumen.textContent = [
+  'Marca: ' + (document.getElementById('brand')?.value || 'Pendiente'),
+  'Modelo: ' + (document.getElementById('model')?.value || 'Pendiente'),
+  'Fotos seleccionadas: ' + document.querySelectorAll('#multiThumbs > div').length + '/6',
+  'Descripción: ' + (document.getElementById('features')?.value.trim() || 'Pendiente')
+].join('\n');
+
 }
 
     buttons.forEach(b => {
