@@ -1120,6 +1120,11 @@ botonRevisar.addEventListener('click', () => {
     return;
   }
 
+if (!estado || estado === 'Sin comprobar') {
+  aviso.textContent = '⚠️ Estado sin comprobar. Revisa si el producto es nuevo o usado antes de preparar la subasta.';
+  return;
+}
+
   aviso.textContent =
     '✅ Producto: ' + nombre +
     ' | Estado: ' + estado +
