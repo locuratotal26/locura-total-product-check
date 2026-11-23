@@ -1169,6 +1169,25 @@ resumen.textContent = [
   'Descripción: ' + (document.getElementById('features')?.value.trim() || 'Pendiente')
 ].join('\n');
 
+let vistaFotos = document.getElementById('locuraFotosSubasta');
+
+if (!vistaFotos) {
+  vistaFotos = document.createElement('div');
+  vistaFotos.id = 'locuraFotosSubasta';
+  vistaFotos.style.cssText =
+    'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0';
+  resumen.before(vistaFotos);
+}
+
+vistaFotos.replaceChildren();
+
+document.querySelectorAll('#multiThumbs img').forEach(foto => {
+  const copia = foto.cloneNode(false);
+  copia.style.cssText =
+    'width:100%;height:140px;object-fit:contain;background:white;border-radius:10px';
+  vistaFotos.append(copia);
+});
+
 }
 
     buttons.forEach(b => {
