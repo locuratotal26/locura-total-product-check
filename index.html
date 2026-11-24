@@ -1319,24 +1319,109 @@ buscar.addEventListener('click', async () => {
       elegir.type = 'button';
       elegir.textContent = '➕ Elegir foto';
 
-      elegir.onclick = () => {
-        if (fotosWeb.some(f => f.url === foto.imageUrl)) {
-          alert('Esta foto ya está elegida');
-          return;
-        }
+    elegir.onclick = async () => {
+  if (fotosWeb.some(f => f.original === foto.imageUrl)) {
+    alert('Esta foto ya está elegida');
+    return;
+  }
 
-        if (fotosWeb.length >= 5) {
-          alert('Máximo 5 fotografías');
-          return;
-        }
+  if (fotosWeb.length >= 5) {
+    alert('Máximo 5 fotografías');
+    return;
+  }
 
-        fotosWeb.push({
-          url: foto.imageUrl,
-          origen: foto.link
-        });
+  elegir.disabled = true;
+  elegir.textContent = '⏳ Preparando foto...';
 
-        actualizarFotosWeb();
-      };
+  try {
+    let blob;
+
+    try {
+      const respuesta = await fetch(foto.imageUrl, {
+        credentials: 'omit',
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (!respuesta.ok) throw new Error();
+
+      blob = await respuesta.blob();
+
+      if (!/^image\/(jpeg|png|webp)$/.test(blob.type)) {
+        throw new Error();
+      }
+
+    } catch {
+      const { data, error } =
+        await window.locuraDb.functions.invoke(
+          'importar-foto-web', {
+            body: { url: foto.imageUrl }
+          }
+        );
+
+      if (error || !(data instanceof Blob)) {
+        throw new Error();
+      }
+
+      blob = data;
+    }
+
+    if (!blob.size || blob.size > 18 * 1024 * 1024) {
+      throw new Error();
+    }
+
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+
+    const escala = Math.min(
+      1, 2048 / Math.max(bitmap.width, bitmap.height)
+    );
+
+    canvas.width = Math.max(1, Math.round(bitmap.width * escala));
+    canvas.height = Math.max(1, Math.round(bitmap.height * escala));
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    bitmap.close();
+
+    const jpeg = await new Promise(resolve =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+    );
+
+    if (!jpeg) throw new Error();
+
+    if (!caja.isConnected) return;
+
+    if (fotosWeb.length >= 5) {
+      alert('Máximo 5 fotografías');
+      return;
+    }
+
+    const archivo = new File(
+      [jpeg],
+      'foto-web-' + Date.now() + '.jpg',
+      { type: 'image/jpeg' }
+    );
+
+    fotosWeb.push({
+      archivo: archivo,
+      url: URL.createObjectURL(archivo),
+      original: foto.imageUrl,
+      origen: foto.link
+    });
+
+    actualizarFotosWeb();
+    elegir.textContent = '✅ Foto preparada';
+
+  } catch {
+    elegir.textContent = '❌ No disponible';
+    alert('Esta imagen no se puede importar. Elige otra fotografía.');
+  } finally {
+    elegir.disabled = false;
+  }
+};
 
       caja.append(img, fuente, elegir);
       resultados.append(caja);
