@@ -77,8 +77,20 @@
        const note=document.createElement('p');note.className='notice';note.textContent='Comprueba los datos de la etiqueta. La IA no certifica autenticidad ni estado nuevo.';
        const apply=document.createElement('button');apply.type='button';apply.textContent='✅ Aplicar a ficha editable';
        apply.onclick=()=>{        
-fill('name',p.name);fill('brand',p.brand);fill('barcode',p.barcode);fill('manualCode',p.barcode);fill('weight',p.weight_kg);
-        const details=[p.model?'Modelo: '+p.model:'',p.features,p.manufacturer_address?'Dirección fabricante: '+p.manufacturer_address:'',p.manufacturer_phone?'Contacto: '+p.manufacturer_phone:'',p.electrical?'Alimentación: '+p.electrical:'',p.manufacture_date?'Fabricación: '+p.manufacture_date:'',p.standard?'Norma: '+p.standard:'',p.notes].filter(Boolean).join('\n');
+fill('name', p.name);
+fill('brand', p.brand);
+
+if ($('model')) {
+  $('model').value = '';
+}
+
+if (p.model && !/^(no |sin |desconocido|pendiente)/i.test(text(p.model))) {
+  fill('model', p.model);
+}
+
+fill('barcode', p.barcode);
+fill('manualCode', p.barcode);
+fill('weight', p.weight_kg);        const details=[p.model?'Modelo: '+p.model:'',p.features,p.manufacturer_address?'Dirección fabricante: '+p.manufacturer_address:'',p.manufacturer_phone?'Contacto: '+p.manufacturer_phone:'',p.electrical?'Alimentación: '+p.electrical:'',p.manufacture_date?'Fabricación: '+p.manufacture_date:'',p.standard?'Norma: '+p.standard:'',p.notes].filter(Boolean).join('\n');
          fill('features',details);
          if($('condition'))$('condition').value='Sin comprobar';
          if($('auth'))$('auth').value='Sin verificar';
