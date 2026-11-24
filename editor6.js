@@ -91,10 +91,14 @@ enginePromise ||= import('https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.2/+esm')
   window.addEventListener('change', event => {
     const input = event.target;
     if (input?.id !== 'multiPhotos' || forwarding) return;
+    if (!window.locuraEdicionActiva) return;
     const files = [...(input.files || [])];
     if (!files.length || files.every(edited)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    
+window.locuraEdicionActiva = false;
+
     input.value = '';
 
     if (processing) {
@@ -244,6 +248,10 @@ enginePromise ||= import('https://cdn.jsdelivr.net/npm/@bg0/browser@0.1.2/+esm')
     if (button2) {
       button2.disabled = false;
       button2.addEventListener('click', () => {
+        
+window.locuraEdicionActiva = true;
+$('multiPhotos')?.click();
+
         tablero.querySelector('p:last-child').textContent = 'La edición se inicia al elegir fotos. Aquí ves únicamente las editadas.';
         view.scrollIntoView({behavior:'smooth',block:'start'});
       });
