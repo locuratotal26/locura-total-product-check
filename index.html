@@ -1369,12 +1369,16 @@ panelFotosWeb.classList.toggle('hidden', paso !== 'mejora');
 
 if (paso === 'mejora') {
   const campo = document.getElementById('locuraWebConsulta');
-  const marca = document.getElementById('brand')?.value || '';
-  const modelo = document.getElementById('model')?.value || '';
-  const nombre = document.getElementById('name')?.value || '';
 
-  if (campo && !campo.value.trim()) {
-    campo.value = [marca, modelo].filter(Boolean).join(' ') || nombre;
+  const datos = ['name', 'brand', 'model', 'barcode']
+    .map(id => document.getElementById(id)?.value?.trim() || '')
+    .filter(v => v && !/sin datos|pendiente|desconocido/i.test(v));
+
+  const consulta = [...new Set(datos)].join(' ');
+
+  if (campo && campo.value !== consulta) {
+    campo.value = consulta;
+    document.getElementById('locuraWebResultados').replaceChildren();
   }
 }
 
