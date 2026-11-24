@@ -173,12 +173,15 @@ if (!(data instanceof Blob)) {
 
     files.push(archivo);
 
-  } catch {
-    throw new Error(
-      'No se pudo importar la foto web ' + (i + 1) +
-      '. Elige otra imagen o súbela manualmente.'
-    );
-  }
+} catch (error) {
+  const servidor = new URL(foto.url).hostname;
+
+  throw new Error(
+    'Foto web ' + (i + 1) +
+    ' | Servidor: ' + servidor +
+    ' | Motivo: ' + error.message
+  );
+}
 }      const row = {
         name: textValue('name'), barcode: valueOrNull('barcode'), brand: valueOrNull('brand'),
         manufacturer: valueOrNull('manufacturer'),  
