@@ -102,15 +102,56 @@ for (const [i, foto] of fotosInternet.entries()) {
   try {
     notify('Preparando foto web ' + (i + 1));
 
-    const respuesta = await fetch(foto.url, {
-      credentials: 'omit',
-      signal: AbortSignal.timeout(15000)
+   let blob;
+
+try {
+  const respuesta = await fetch(foto.url, {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(15000)
+  });
+
+  if (!respuesta.ok) throw new Error();
+
+  blob = await respuesta.blob();
+
+  if (!validPhoto(blob)) throw new Error();
+
+} catch {
+  notify('Importando foto web ' + (i + 1) + ' desde Supabase...');
+
+  const { data, error, response } =
+    await db.functions.invoke('importar-foto-web', {
+      body: { url: foto.url }
     });
 
-    if (!respuesta.ok) throw new Error();
+  if (error || !(data instanceof Blob)) {
+    throw new Error('No se pudo importar la imagen');
+  }
 
-    const blob = await respuesta.blob();
+  const bytes = new Uint8Array(
+    await data.slice(0, 12).arrayBuffer()
+  );
 
+  let tipo = response?.headers.get('X-Image-Type');
+
+  if (!tipo) {
+    if (bytes[0] === 255 && bytes[1] === 216) {
+      tipo = 'image/jpeg';
+    } else if (bytes[0] === 137 && bytes[1] === 80) {
+      tipo = 'image/png';
+    } else if (
+      new TextDecoder().decode(bytes.slice(8, 12)) === 'WEBP'
+    ) {
+      tipo = 'image/webp';
+    }
+  }
+
+  blob = new Blob([data], { type: tipo || '' });
+
+  if (!validPhoto(blob)) {
+    throw new Error('Formato de imagen no compatible');
+  }
+}
     const archivo = new File(
       [blob],
       'foto-web-' + (i + 1),
