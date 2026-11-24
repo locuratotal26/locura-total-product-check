@@ -124,9 +124,20 @@ try {
       body: { url: foto.url }
     });
 
-  if (error || !(data instanceof Blob)) {
-    throw new Error('No se pudo importar la imagen');
-  }
+if (error) {
+  let motivo = error.message;
+
+  try {
+    const detalle = await error.context.clone().json();
+    motivo = detalle.error || motivo;
+  } catch {}
+
+  throw new Error(motivo);
+}
+
+if (!(data instanceof Blob)) {
+  throw new Error('Supabase no devolvió una imagen válida');
+}
 
   const bytes = new Uint8Array(
     await data.slice(0, 12).arrayBuffer()
