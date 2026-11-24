@@ -86,8 +86,48 @@
     try {
       const {data:auth, error:authError} = await db.auth.getUser();
       if (authError || !auth?.user?.id) throw new Error('Debes iniciar sesión para guardar.');
-      const files = selected.length ? selected.slice(0, MAX) : [...($('photo')?.files || [])].slice(0, 1);
-      const row = {
+const files = selected.length
+  ? selected.slice(0, MAX)
+  : [...($('photo')?.files || [])].slice(0, 1);
+
+const fotosInternet =
+  window.locuraObtenerFotosWeb?.() || [];
+
+for (const [i, foto] of fotosInternet.entries()) {
+  if (foto.archivo) {
+    files.push(foto.archivo);
+    continue;
+  }
+
+  try {
+    notify('Preparando foto web ' + (i + 1));
+
+    const respuesta = await fetch(foto.url, {
+      credentials: 'omit',
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!respuesta.ok) throw new Error();
+
+    const blob = await respuesta.blob();
+
+    const archivo = new File(
+      [blob],
+      'foto-web-' + (i + 1),
+      { type: blob.type }
+    );
+
+    if (!validPhoto(archivo)) throw new Error();
+
+    files.push(archivo);
+
+  } catch {
+    throw new Error(
+      'No se pudo importar la foto web ' + (i + 1) +
+      '. Elige otra imagen o súbela manualmente.'
+    );
+  }
+}      const row = {
         name: textValue('name'), barcode: valueOrNull('barcode'), brand: valueOrNull('brand'),
         manufacturer: valueOrNull('manufacturer'),  
          model: valueOrNull('model'),
