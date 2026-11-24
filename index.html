@@ -1184,9 +1184,86 @@ botonCopiar.addEventListener('click', async () => {
   }
 });
 
+const panelFotosWeb = document.createElement('section');
+panelFotosWeb.id = 'locuraFotosWeb';
+panelFotosWeb.className = 'panel hidden';
+
+panelFotosWeb.innerHTML = `
+  <h3>🖼️ Buscar y elegir 5 fotos</h3>
+  <p>Busca imágenes del modelo exacto y comprueba
+  que tienes permiso para utilizarlas.</p>
+
+  <input id="locuraWebConsulta" type="search"
+    placeholder="Marca y modelo del producto">
+
+  <button type="button" id="locuraWebBuscar">
+    🔎 Buscar fotografías
+  </button>
+
+<label for="locuraWebArchivos">
+  🖼️ Elegir hasta 5 fotos descargadas
+</label>
+<input type="file" id="locuraWebArchivos"
+  accept="image/jpeg,image/png,image/webp"
+  multiple>
+
+  <p id="locuraWebContador">0/5 fotos elegidas</p>
+  <div id="locuraWebResultados"></div>
+  <div id="locuraWebElegidas"></div>
+`;
+
+tablero.after(panelFotosWeb);
+
+const fotosWeb = [];
+
+document.getElementById('locuraWebArchivos')
+  .addEventListener('change', function () {
+    const nuevas = Array.from(this.files);
+
+    nuevas.forEach(archivo => {
+      if (fotosWeb.length < 5) {
+        fotosWeb.push(archivo);
+      }
+    });
+
+    this.value = '';
+
+    const contador = document.getElementById('locuraWebContador');
+    const vista = document.getElementById('locuraWebElegidas');
+
+    contador.textContent = fotosWeb.length + '/5 fotos elegidas';
+    vista.replaceChildren();
+
+    fotosWeb.forEach((archivo, indice) => {
+      const imagen = document.createElement('img');
+      imagen.src = URL.createObjectURL(archivo);
+      imagen.onload = () => URL.revokeObjectURL(imagen.src);
+      imagen.style.cssText =
+        'width:45%;height:150px;object-fit:contain;background:white;margin:5px;border-radius:10px';
+      imagen.alt = 'Foto elegida ' + (indice + 1);
+      vista.append(imagen);
+    });
+  });
+
+document.getElementById('locuraWebBuscar').addEventListener('click', () => {
+  const consulta = document.getElementById('locuraWebConsulta').value.trim();
+
+  if (!consulta) {
+    alert('Introduce la marca y el modelo del producto.');
+    return;
+  }
+
+  const url = 'https://www.google.com/search?tbm=isch&q='
+    + encodeURIComponent(consulta);
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+});
+
   const tarjetas = [
-    ['📸', '1. Fotos y escáner', 'foto', true],   
-['✨', '2. Editar fotos automáticamente', 'mejora', false],
+    ['📸', '1. Fotos y escáner', 'foto', true], 
+    
+['🖼️', '2. Buscar y elegir 5 fotos en Internet', 'mejora', true],
+
     ['🔎', '3. IA + Internet', 'ia', true],
     ['📝', '4. Ficha automática', 'ficha', true],
     ['✅', '5. Revisar estado y precio', 'revision', true],
@@ -1199,6 +1276,18 @@ botonCopiar.addEventListener('click', async () => {
     registro.dataset.paso = paso;
 
 panelSubasta.classList.toggle('hidden', paso !== 'subasta');
+panelFotosWeb.classList.toggle('hidden', paso !== 'mejora');
+
+if (paso === 'mejora') {
+  const campo = document.getElementById('locuraWebConsulta');
+  const marca = document.getElementById('brand')?.value || '';
+  const modelo = document.getElementById('model')?.value || '';
+  const nombre = document.getElementById('name')?.value || '';
+
+  if (campo && !campo.value.trim()) {
+    campo.value = [marca, modelo].filter(Boolean).join(' ') || nombre;
+  }
+}
 
 if (paso === 'subasta') {
   const nombre = document.getElementById('name').value.trim();
