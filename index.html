@@ -262,8 +262,91 @@ $('lookupCode').onclick=async()=>{const code=($('manualCode').value||$('barcode'
 $('photo').addEventListener('change',e=>{const file=e.target.files[0];if(!file){$('preview').hidden=true;return}if(!file.type.startsWith('image/')){message('Selecciona una imagen válida.',true);return}const url=URL.createObjectURL(file);$('preview').src=url;$('preview').hidden=false;$('preview').onload=()=>URL.revokeObjectURL(url)});
 $('productForm').addEventListener('reset',()=>{$('preview').hidden=true});
 $('productForm').addEventListener('submit',async e=>{e.preventDefault();if(!value('name'))return;const row={name:value('name'),barcode:value('barcode')||null,brand:value('brand')||null,manufacturer:value('manufacturer')||null,weight:value('weight')===''?null:Number(value('weight')),price:value('price')===''?null:Number(value('price')),condition:value('condition'),auth:value('auth'),features:value('features')||null,approved:false};$('saveBtn').disabled=true;message('Guardando en Supabase...');const {error}=await db.from('productos').insert(row);$('saveBtn').disabled=false;if(error){message('No se pudo guardar: '+errText(error),true);return}e.target.reset();message('Borrador guardado en Supabase.');await loadProducts()});
-function render(){const list=$('items');list.replaceChildren();if(!products.length){const p=document.createElement('p');p.className='muted';p.textContent='Todavía no hay productos registrados en Supabase.';list.append(p);return}for(const p of products){const d=document.createElement('div');d.className='item';const h=document.createElement('h3');h.textContent=p.name;d.append(h);for(const [k,v] of [['Código',p.barcode],['Marca',p.brand],['Fabricante',p.manufacturer],['Peso (kg)',p.weight],['Precio (€)',p.price],['Estado',p.condition],['Autenticidad',p.auth],['Características',p.features],['Creado',p.created_at?new Date(p.created_at).toLocaleString('es-ES'):'']]){if(v!==null&&v!==undefined&&v!==''){const line=document.createElement('p');line.textContent=k+': '+v;d.append(line)}}const status=document.createElement('p');status.className='status';status.textContent=p.approved?'Aprobado · NO publicado':'Pendiente de revisión';d.append(status);const btn=document.createElement('button');btn.textContent=p.approved?'Volver a pendiente':'Aprobar borrador';btn.onclick=async()=>{btn.disabled=true;const {error}=await db.from('productos').update({approved:!p.approved}).eq('id',p.id).select('id');if(error){message('No se pudo actualizar: '+errText(error),true);btn.disabled=false;return}await loadProducts()};d.append(btn);list.append(d)}}
-$('export').onclick=()=>{const blob=new Blob([JSON.stringify(products,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='locura-total-productos-supabase.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+function render() {
+  const list = $('items');
+  list.replaceChildren();
+
+  if (!products.length) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = 'Todavía no hay productos registrados en Supabase.';
+    list.append(p);
+    return;
+  }
+
+  for (const p of products) {
+    const d = document.createElement('div');
+    d.className = 'item';
+
+    const h = document.createElement('h3');
+    h.textContent = p.name;
+    d.append(h);
+
+    for (const [k, v] of [
+      ['Código', p.barcode],
+      ['Marca', p.brand],
+      ['Fabricante', p.manufacturer],
+      ['Peso (kg)', p.weight],
+      ['Precio (€)', p.price],
+      ['Estado', p.condition],
+      ['Autenticidad', p.auth],
+      ['Características', p.features],
+      ['Creado', p.created_at ?
+        new Date(p.created_at).toLocaleString('es-ES') : '']
+    ]) {
+      if (v !== null && v !== undefined && v !== '') {
+        const line = document.createElement('p');
+        line.textContent = k + ': ' + v;
+        d.append(line);
+      }
+    }
+
+    const status = document.createElement('p');
+    status.className = 'status';
+    status.textContent = p.approved
+      ? 'Aprobado · NO publicado'
+      : 'Pendiente de revisión';
+    d.append(status);
+
+    const btn = document.createElement('button');
+    btn.textContent = p.approved
+      ? 'Volver a pendiente'
+      : 'Aprobar borrador';
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      const { error } = await db.from('productos')
+        .update({ approved: !p.approved })
+        .eq('id', p.id).select('id');
+
+      if (error) {
+        message('No se pudo actualizar: ' + errText(error), true);
+        btn.disabled = false;
+        return;
+      }
+
+      await loadProducts();
+    };
+
+    d.append(btn);
+
+    const subasta = document.createElement('button');
+    subasta.type = 'button';
+    subasta.textContent = '🔨 ENVIAR A SUBASTA LIVE';
+    subasta.style.cssText =
+      'background:#f244b3;color:white;font-weight:bold;width:100%;margin-top:10px';
+
+    subasta.onclick = () => {
+      document.dispatchEvent(new CustomEvent(
+        'locuraSubastaGuardada',
+        { detail: { id: p.id } }
+      ));
+    };
+
+    d.append(subasta);
+    list.append(d);
+  }
+}$('export').onclick=()=>{const blob=new Blob([JSON.stringify(products,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='locura-total-productos-supabase.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>{showSession(session).catch(e=>message(errText(e),true))},0)});
 const {data,error}=await db.auth.getSession();if(error)loginMessage(errText(error),true);else await showSession(data.session);
 });
@@ -1071,78 +1154,92 @@ panelSubasta.innerHTML = `
 tablero.append(panelSubasta);
 
 const botonRevisar = document.getElementById('locuraRevisar');
+const botonCopiar = document.getElementById('locuraCopiarFicha');
+const avisoSubasta = document.getElementById('locuraSubastaAviso');
+const campoPuja = document.getElementById('locuraPuja');
+
 botonRevisar.disabled = false;
 
-botonRevisar.addEventListener('click', () => {
-  const nombre = document.getElementById('name').value.trim();
-  const estado = document.getElementById('condition').value;
-  const valor = document.getElementById('locuraPuja').value;
-  const puja = Number(valor);
-  const aviso = document.getElementById('locuraSubastaAviso');
+function datosSubastaActual() {
+  const p = productoSubastaGuardado;
 
-  if (!nombre || !valor || !Number.isFinite(puja) || puja <= 0) {
-    aviso.textContent = 'Completa el producto y la puja inicial.';
-    return;
-  }
+  const valor = id =>
+    document.getElementById(id)?.value?.trim() || '';
 
-if (!estado || estado === 'Sin comprobar') {
-  aviso.textContent = '⚠️ Estado sin comprobar. Revisa si el producto es nuevo o usado antes de preparar la subasta.';
-  return;
+  return {
+    nombre: p ? p.name : valor('name'),
+    marca: p ? p.brand : valor('brand'),
+    modelo: p ? p.model : valor('model'),
+    estado: p ? p.condition : valor('condition'),
+    descripcion: p ? p.features : valor('features'),
+    puja: Number(campoPuja.value)
+  };
 }
 
-  aviso.textContent =
-    '✅ Producto: ' + nombre +
-    ' | Estado: ' + estado +
-    ' | Puja inicial: ' + puja.toFixed(2) +
-    ' €. Preparado, pero NO publicado en TikTok.';
-});
+function validarSubasta(d) {
+  return d.nombre &&
+    d.estado &&
+    d.estado !== 'Sin comprobar' &&
+    Number.isFinite(d.puja) &&
+    d.puja > 0;
+}
 
-const botonCopiar = document.getElementById('locuraCopiarFicha');
+botonRevisar.onclick = () => {
+  const d = datosSubastaActual();
 
-botonRevisar.addEventListener('click', () => {
-  const aviso = document.getElementById('locuraSubastaAviso');
-  botonCopiar.disabled = !aviso.textContent.startsWith('✅ Producto:');
-});
-
-botonCopiar.addEventListener('click', async () => {
-  const nombre = document.getElementById('name').value.trim();
-  const estado = document.getElementById('condition').value;
-  const marca = document.getElementById('brand').value.trim();
-  const modelo = document.getElementById('model').value.trim();
-  const valor = document.getElementById('locuraPuja').value;
-  const puja = Number(valor);
-
-  if (!nombre || !valor || !Number.isFinite(puja) ||
-      puja <= 0 || !estado || estado === 'Sin comprobar') {
-    document.getElementById('locuraSubastaAviso').textContent =
-      '⚠️ Revisa el producto, su estado y la puja.';
+  if (!validarSubasta(d)) {
+    avisoSubasta.textContent =
+      '⚠️ Revisa el producto, estado y puja inicial.';
     botonCopiar.disabled = true;
     return;
   }
 
-  const descripcion = document.getElementById('features').value
-    .split(/Datos web pendientes de verificar:/i)[0]
-    .replace(/\s+/g, ' ').trim().slice(0, 180);
+  avisoSubasta.textContent =
+    '✅ Producto revisado: ' + d.nombre +
+    ' | Puja inicial: ' + d.puja.toFixed(2) + ' €';
+
+  botonCopiar.disabled = false;
+};
+
+botonCopiar.onclick = async () => {
+  const d = datosSubastaActual();
+
+  if (!validarSubasta(d)) {
+    botonCopiar.disabled = true;
+    return;
+  }
 
   const texto = [
-    'Producto: ' + nombre,
-    'Marca: ' + (marca || 'Sin verificar'),
-    'Modelo (verificar): ' + (modelo || 'Pendiente'),
-    'Estado: ' + estado,
-    'Descripción: ' + descripcion,
-    'Puja inicial: ' + puja.toFixed(2) + ' €'
+    'Producto: ' + d.nombre,
+    'Marca: ' + (d.marca || 'Pendiente'),
+    'Modelo: ' + (d.modelo || 'Pendiente'),
+    'Estado: ' + d.estado,
+    'Descripción: ' + (d.descripcion || ''),
+    'Puja inicial: ' + d.puja.toFixed(2) + ' €'
   ].join('\n');
 
   try {
     await navigator.clipboard.writeText(texto);
-    document.getElementById('locuraSubastaAviso').textContent =
-      '✅ Ficha copiada correctamente. No publicada en TikTok.';
-  } catch (error) {
-    document.getElementById('locuraSubastaAviso').textContent =
+    avisoSubasta.textContent =
+      '✅ Ficha copiada. No publicada en TikTok.';
+  } catch {
+    avisoSubasta.textContent =
       '⚠️ No se pudo copiar la ficha.';
   }
+};
+
+campoPuja.addEventListener('input', () => {
+  botonCopiar.disabled = true;
 });
 
+pasos.addEventListener('click', e => {
+  if (e.target.closest('button[data-paso]')) {
+    productoSubastaGuardado = null;
+    campoPuja.value = '';
+    botonCopiar.disabled = true;
+    avisoSubasta.textContent = '';
+  }
+}, true);
 const panelFotosWeb = document.createElement('section');
 panelFotosWeb.id = 'locuraFotosWeb';
 panelFotosWeb.className = 'panel hidden';
@@ -1562,7 +1659,70 @@ boton.addEventListener('click', () => {
   }, true);
 
   abrir('foto');
+let productoSubastaGuardado = null;
 
+document.addEventListener('locuraSubastaGuardada', async (e) => {
+  try {
+    const db = window.locuraDb;
+
+    const { data: p, error } = await db
+      .from('productos')
+      .select('*')
+      .eq('id', e.detail.id)
+      .single();
+
+    if (error || !p) {
+      throw new Error('No se pudo recuperar el producto');
+    }
+
+    abrir('subasta');
+    productoSubastaGuardado = p;
+
+    document.getElementById('locuraSubastaProducto').textContent =
+      'Producto: ' + p.name;
+
+    document.getElementById('locuraSubastaEstado').textContent =
+      'Estado: ' + p.condition;
+
+    document.getElementById('locuraPuja').value = '';
+
+    document.getElementById('locuraCopiarFicha').disabled = true;
+
+    document.getElementById('locuraDatosSubasta').textContent = [
+      'Marca: ' + (p.brand || 'Pendiente'),
+      'Modelo: ' + (p.model || 'Pendiente'),
+      'Descripción: ' + (p.features || 'Pendiente')
+    ].join('\n');
+
+    const galeria = document.getElementById('locuraFotosSubasta');
+    galeria.replaceChildren();
+
+    for (const ruta of (p.image_urls || []).slice(0, 6)) {
+      const { data, error } = await db.storage
+        .from('locura-productos')
+        .createSignedUrl(ruta, 600);
+
+      if (productoSubastaGuardado !== p) return;
+
+      if (!error && data?.signedUrl) {
+        const img = document.createElement('img');
+        img.src = data.signedUrl;
+        img.style.cssText =
+          'width:100%;height:140px;object-fit:contain;border-radius:10px';
+        galeria.append(img);
+      }
+    }
+
+    document.getElementById('locuraSubastaAviso').textContent =
+      'Producto recuperado. Fotografías: ' + galeria.children.length +
+      '. Introduce la puja inicial.';
+
+    panelSubasta.scrollIntoView({ behavior: 'smooth' });
+
+  } catch (error) {
+    alert(error.message);
+  }
+});
   const extras = document.createElement('section');
   extras.id = 'locuraExtra';
   app.append(extras);
