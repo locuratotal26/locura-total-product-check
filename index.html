@@ -227,6 +227,27 @@ function setCode(code) {
     return true;
   }
 
+  // Otros códigos internos o logísticos.
+  const etiqueta = raw.toUpperCase();
+
+  if (/^[A-Z0-9][A-Z0-9 _-]{4,47}$/.test(etiqueta)) {
+    $('manualCode').value = etiqueta;
+
+    const campo = $('features');
+    const referencia =
+      'Código de etiqueta (tipo por verificar): ' + etiqueta;
+
+    if (campo && !campo.value.includes(referencia)) {
+      campo.value += (campo.value ? '\n' : '') + referencia;
+    }
+
+    scanStatus(
+      '✅ Código de etiqueta leído: ' + etiqueta +
+      '. No se ha confirmado como EAN/UPC.'
+    );
+    return true;
+  }
+
   scanStatus('⚠️ Código no reconocido. Comprueba la etiqueta.');
   return false;
 }
