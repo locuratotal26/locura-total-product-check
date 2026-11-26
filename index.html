@@ -200,7 +200,36 @@ $('refresh').onclick=loadProducts;
 let cameraStream=null,scanTimer=null,scanning=false,detecting=false;
 const scanStatus=t=>$('scanStatus').textContent=t;
 function validCode(code){return /^\d{8,14}$/.test(code)}
-function setCode(code){code=String(code).replace(/\s/g,'');if(!validCode(code)){scanStatus('Código no válido: escribe entre 8 y 14 dígitos.');return false}$('barcode').value=code;$('manualCode').value=code;scanStatus('Código detectado: '+code+'. Puedes buscar sus datos o completar la ficha.');return true}
+
+function setCode(code) {
+  const raw = String(code || '').trim().replace(/\s+/g, ' ');
+  const numero = raw.replace(/\s/g, '');
+
+  if (validCode(numero)) {
+    $('barcode').value = numero;
+    $('manualCode').value = numero;
+    scanStatus('✅ EAN/UPC detectado: ' + numero);
+    return true;
+  }
+
+  if (/^LPN[\s-]*[A-Z0-9 -]{4,}$/i.test(raw)) {
+    $('manualCode').value = raw;
+
+    const campo = $('features');
+    const referencia = 'Referencia logística LPN: ' + raw;
+
+    if (campo && !campo.value.includes(referencia)) {
+      campo.value += (campo.value ? '\n' : '') + referencia;
+    }
+
+    scanStatus('✅ LPN registrado: ' + raw +
+      '. Es una referencia logística, no un EAN.');
+    return true;
+  }
+
+  scanStatus('⚠️ Código no reconocido. Comprueba la etiqueta.');
+  return false;
+}
 function stopCamera(){scanning=false;if(scanTimer){clearTimeout(scanTimer);scanTimer=null}if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}$('scanVideo').srcObject=null;$('scanVideo').classList.add('hidden');$('startScan').disabled=false;$('stopScan').disabled=true}
 $('stopScan').onclick=()=>{stopCamera();scanStatus('Cámara cerrada.')};
 $('startScan').onclick=async()=>{if(!('BarcodeDetector' in window)){scanStatus('Este navegador no admite lectura automática con BarcodeDetector. Introduce el código manualmente o prueba Chrome actualizado en Android.');return}if(!navigator.mediaDevices?.getUserMedia){scanStatus('La cámara requiere HTTPS y permiso del navegador.');return}try{const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','itf']});cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const video=$('scanVideo');video.srcObject=cameraStream;video.classList.remove('hidden');$('startScan').disabled=true;$('stopScan').disabled=false;scanning=true;await video.play();scanStatus('Apunta al código de barras y mantén el móvil quieto.');const loop=async()=>{if(!scanning)return;if(!detecting&&video.readyState>=2){detecting=true;try{const results=await detector.detect(video);if(results.length&&setCode(results[0].rawValue)){stopCamera();return}}catch(e){scanStatus('No se pudo leer la imagen: '+e.message)}finally{detecting=false}}if(scanning)scanTimer=setTimeout(loop,250)};loop()}catch(e){stopCamera();scanStatus('No se pudo abrir el escáner: '+(e.message||e)+'. Puedes escribir el código manualmente.')}};
