@@ -330,7 +330,12 @@ if (!buscador) {
   buscador.style.cssText =
     'width:100%;padding:12px;margin:10px 0;border-radius:12px;background:#14121c;color:white;border:1px solid #796183';
 
-  list.before(buscador);
+  const barra = document.createElement('div');
+  barra.className = 'lt-saved-toolbar';
+  list.before(barra);
+  barra.append(buscador);
+  const refrescar = $('refresh');
+  if (refrescar) barra.append(refrescar);
 }
 
 const filtrarProductos = () => {
@@ -444,7 +449,12 @@ d.append(detalles);
     status.textContent = p.approved
       ? 'Aprobado · NO publicado'
       : 'Pendiente de revisión';
-    d.append(status);
+    const estadoRevision = document.createElement('small');
+    estadoRevision.className = 'lt-review-state';
+    estadoRevision.textContent = p.approved ? 'Aprobado · No publicado' : 'Pendiente de revisión';
+    estadoRevision.dataset.approved = String(!!p.approved);
+    identidad.append(estadoRevision);
+    detalles.append(status);
 
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -468,7 +478,7 @@ d.append(detalles);
       await loadProducts();
     };
 
-    d.append(btn);
+    detalles.append(btn);
 
     const subasta = document.createElement('button');
     subasta.type = 'button';
@@ -2048,7 +2058,7 @@ buttons.forEach((b,i)=>{
 });
 const hojaLocura = document.createElement('link');
 hojaLocura.rel='stylesheet';
-hojaLocura.href='locura-diseno-live.css?v=2';
+hojaLocura.href='locura-diseno-live.css?v=3';
 document.head.append(hojaLocura);
 abrir('guardados');
   
@@ -2057,11 +2067,20 @@ abrir('guardados');
     el.querySelector('h2')?.textContent === 'Próximas integraciones'
   );
 
-  if (panelFinal) {
+  if (panelFinal || exportar) {
     const detalle = document.createElement('details');
     const resumen = document.createElement('summary');
     resumen.textContent = '⚙️ Otras opciones';
-    detalle.append(resumen, panelFinal);
+    detalle.append(resumen);
+    if (exportar) {
+      const copia = document.createElement('div');
+      copia.className = 'lt-backup';
+      const tituloCopia = document.createElement('p');
+      tituloCopia.textContent = 'Copia de seguridad de productos';
+      copia.append(tituloCopia, exportar);
+      detalle.append(copia);
+    }
+    if (panelFinal) detalle.append(panelFinal);
     extras.append(detalle);
   }
 });
