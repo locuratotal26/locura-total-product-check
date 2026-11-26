@@ -156,3 +156,32 @@ main{max-width:1740px!important;padding:12px 18px}
  #locuraCopiarFicha{font-size:12px!important}
 }
 @media(max-width:350px){#locuraCompacto .pasos{grid-template-columns:repeat(3,minmax(0,1fr))}#items>.item .lt-card-head>div:first-child,#items>.item .lt-card-head img{width:60px!important;height:60px!important}}
+
+/* Tercera revisión: lista compacta y herramientas juntas. */
+.lt-saved-toolbar{display:flex;align-items:center;gap:7px;margin:8px 0;min-width:0}
+#locuraBuscarGuardados{flex:1;min-width:0;width:auto!important;margin:0!important;font-size:14px;padding:9px!important}
+.lt-saved-toolbar #refresh{flex:0 0 auto;margin:0!important;padding:9px 10px;font-size:12px;min-height:38px}
+.lt-backup{padding:8px 0}
+.lt-backup p{margin:4px 0;font-weight:600}
+#items>.item{grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:4px 7px;padding:8px;margin:6px 0}
+#items>.item .lt-card-head{grid-row:1/span 2}
+#items>.item small.lt-review-state{font-size:10px;color:#ffd38a;line-height:1.2;margin:2px 0}
+#items>.item small.lt-review-state[data-approved=true]{color:#b5cf9c}
+#items>.item>details{grid-column:1/-1;grid-row:auto;font-size:12px}
+#items>.item>details>.status{font-size:12px;margin:5px 0}
+#items>.item>details>.lt-approve{font-size:12px;margin:4px 0 8px;padding:8px 12px}
+#items>.item>button{min-height:32px}
+@media(max-width:768px){
+ #items{max-height:460px;padding:2px 3px 2px 2px}
+ #items>.item{padding:6px;gap:3px 5px;margin:5px 0}
+ #items>.item .lt-card-head{gap:6px!important}
+ #items>.item h3{font-size:13px;line-height:1.15}
+ #items>.item small{margin-top:2px;line-height:1.15}
+ #items>.item .lt-condition{margin:2px 0!important;font-size:10px;padding:1px 4px}
+ #items>.item>details summary{margin:2px 0!important}
+ #items>.item>button{padding:5px 6px;min-height:32px}
+ #items>.item>.lt-send{max-width:100px}
+ #items>.item>.locura-see-photos,#items>.item>.locura-delete-product{font-size:10px}
+ .lt-saved-toolbar #refresh{padding:8px;font-size:11px}
+ #locuraBuscarGuardados{font-size:13px}
+}
