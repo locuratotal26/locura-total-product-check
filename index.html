@@ -193,7 +193,7 @@ const loginMessage=(t,error=false)=>{const el=$('loginMessage');el.textContent=t
 const value=id=>$(id).value.trim();
 const errText=e=>e?.message||'Error desconocido';
 async function showSession(session){const signed=!!session?.user;$('loginPanel').classList.toggle('hidden',signed);$('app').classList.toggle('hidden',!signed);if(!signed)stopCamera();if(signed){$('userEmail').textContent=session.user.email||'Usuario';await loadProducts()}else{products=[];$('items').replaceChildren()}}
-async function loadProducts(){message('Cargando productos...');const {data,error}=await db.from('productos').select('id,created_at,name,barcode,brand,manufacturer,weight,price,condition,auth,features,approved').order('created_at',{ascending:false});if(error){message('No se pudo leer Supabase: '+errText(error),true);return}products=data||[];render();message('Productos sincronizados: '+products.length)}
+async function loadProducts(){message('Cargando productos...');const {data,error}=await db.from('productos').select('id,created_at,name,barcode,brand,manufacturer,weight,price,condition,auth,features,approved,model,image_urls').order('created_at',{ascending:false});if(error){message('No se pudo leer Supabase: '+errText(error),true);return}products=data||[];render();message('Productos sincronizados: '+products.length)}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBtn').disabled=true;loginMessage('Comprobando acceso...');const {error}=await db.auth.signInWithPassword({email:value('email'),password:$('password').value});$('loginBtn').disabled=false;if(error){loginMessage('No se pudo iniciar sesión: '+errText(error),true);return}$('password').value='';loginMessage('')});
 $('logout').onclick=async()=>{stopCamera();const {error}=await db.auth.signOut();if(error)message('Error al cerrar sesión: '+errText(error),true)};
 $('refresh').onclick=loadProducts;
@@ -265,7 +265,32 @@ $('productForm').addEventListener('submit',async e=>{e.preventDefault();if(!valu
 function render() {
   const list = $('items');
   list.replaceChildren();
+  
+let buscador = document.getElementById('locuraBuscarGuardados');
 
+if (!buscador) {
+  buscador = document.createElement('input');
+  buscador.id = 'locuraBuscarGuardados';
+  buscador.type = 'search';
+  buscador.placeholder = '🔍 Buscar producto...';
+  buscador.style.cssText =
+    'width:100%;padding:12px;margin:10px 0;border-radius:12px;background:#14121c;color:white;border:1px solid #796183';
+
+  list.before(buscador);
+}
+
+const filtrarProductos = () => {
+  const texto = buscador.value.toLowerCase().trim();
+
+  list.querySelectorAll(':scope > .item').forEach(tarjeta => {
+    tarjeta.style.display =
+      tarjeta.textContent.toLowerCase().includes(texto)
+      ? '' : 'none';
+  });
+};
+
+buscador.oninput = filtrarProductos;
+queueMicrotask(filtrarProductos);
   if (!products.length) {
     const p = document.createElement('p');
     p.className = 'muted';
@@ -281,25 +306,76 @@ function render() {
     const h = document.createElement('h3');
     h.textContent = p.name;
     d.append(h);
+    
+const cabecera = document.createElement('div');
+cabecera.style.cssText =
+  'display:flex;align-items:center;gap:12px;margin-bottom:10px';
 
-    for (const [k, v] of [
-      ['Código', p.barcode],
-      ['Marca', p.brand],
-      ['Fabricante', p.manufacturer],
-      ['Peso (kg)', p.weight],
-      ['Precio (€)', p.price],
-      ['Estado', p.condition],
-      ['Autenticidad', p.auth],
-      ['Características', p.features],
-      ['Creado', p.created_at ?
-        new Date(p.created_at).toLocaleString('es-ES') : '']
-    ]) {
-      if (v !== null && v !== undefined && v !== '') {
-        const line = document.createElement('p');
-        line.textContent = k + ': ' + v;
-        d.append(line);
+const miniatura = document.createElement('div');
+miniatura.style.cssText =
+  'width:90px;height:90px;flex-shrink:0;background:#14121c;border-radius:10px;display:grid;place-items:center;overflow:hidden';
+
+miniatura.textContent = '📦';
+
+cabecera.append(miniatura, h);
+d.prepend(cabecera);
+
+const ruta = Array.isArray(p.image_urls)
+  ? p.image_urls[0] : null;
+
+if (ruta) {
+  db.storage.from('locura-productos')
+    .createSignedUrl(ruta, 3600)
+    .then(({ data, error }) => {
+      if (!error && data?.signedUrl) {
+        const img = document.createElement('img');
+        img.src = data.signedUrl;
+        img.alt = p.name;
+        img.loading = 'lazy';
+        img.style.cssText =
+          'width:90px;height:90px;object-fit:contain';
+
+        img.onerror = () => {
+          miniatura.textContent = '📦';
+        };
+
+        miniatura.replaceChildren(img);
       }
-    }
+    }).catch(console.warn);
+}
+  const estado = document.createElement('p');
+estado.textContent = 'Estado: ' + (p.condition || 'Sin comprobar');
+estado.style.cssText =
+  'color:#9be8ae;font-weight:bold;margin:5px 0';
+d.append(estado);
+
+const detalles = document.createElement('details');
+const resumen = document.createElement('summary');
+
+resumen.textContent = '📋 Ver información completa';
+resumen.style.cssText =
+  'cursor:pointer;color:#d9b4ef;margin:8px 0';
+
+detalles.append(resumen);
+
+for (const [k, v] of [
+  ['Código', p.barcode],
+  ['Marca', p.brand],
+  ['Fabricante', p.manufacturer],
+  ['Peso (kg)', p.weight],
+  ['Autenticidad', p.auth],
+  ['Características', p.features],
+  ['Creado', p.created_at ?
+    new Date(p.created_at).toLocaleString('es-ES') : '']
+]) {
+  if (v !== null && v !== undefined && v !== '') {
+    const line = document.createElement('p');
+    line.textContent = k + ': ' + v;
+    detalles.append(line);
+  }
+}
+
+d.append(detalles);
 
     const status = document.createElement('p');
     status.className = 'status';
@@ -1504,7 +1580,14 @@ const tarjetas = [
 
   function abrir(paso, analizar = false) {
     registro.dataset.paso = paso;
+const zona = document.getElementById('locuraZonaSubastas');
 
+if (zona) {
+  zona.hidden =
+    paso !== 'guardados' && paso !== 'subasta';
+}
+
+registro.classList.toggle('hidden', paso === 'guardados');
 panelSubasta.classList.toggle('hidden', paso !== 'subasta');
 panelFotosWeb.classList.toggle('hidden', paso !== 'mejora');
 
@@ -1629,6 +1712,7 @@ boton.addEventListener('click', () => {
   }
 
   if (['productos', 'guardados', 'items'].includes(paso)) {
+    abrir('guardados');
     const lista = document.getElementById('items');
     const desplegable = lista?.closest('details');
 
@@ -1688,11 +1772,49 @@ document.addEventListener('locuraSubastaGuardada', async (e) => {
 
     document.getElementById('locuraCopiarFicha').disabled = true;
 
-    document.getElementById('locuraDatosSubasta').textContent = [
-      'Marca: ' + (p.brand || 'Pendiente'),
-      'Modelo: ' + (p.model || 'Pendiente'),
-      'Descripción: ' + (p.features || 'Pendiente')
-    ].join('\n');
+   let datosSubasta = document.getElementById('locuraDatosSubasta');
+
+if (datosSubasta.tagName === 'P') {
+  const contenedor = document.createElement('div');
+  contenedor.id = 'locuraDatosSubasta';
+  datosSubasta.replaceWith(contenedor);
+  datosSubasta = contenedor;
+}
+
+const descripcionCompleta = String(p.features || '').trim();
+
+const descripcionBase = descripcionCompleta
+  .split(/Datos web pendientes de verificar:/i)[0]
+  .replace(/\s+/g, ' ').trim();
+
+const descripcionCorta = descripcionBase.length > 150
+  ? descripcionBase.slice(0, 150) + '…'
+  : descripcionBase;
+
+datosSubasta.replaceChildren();
+
+const breve = document.createElement('p');
+breve.style.whiteSpace = 'pre-line';
+
+breve.textContent = [
+  'Marca: ' + (p.brand || 'Pendiente'),
+  'Modelo: ' + (p.model || 'Pendiente'),
+  'Descripción: ' + (descripcionCorta || 'Pendiente')
+].join('\n');
+
+const detalles = document.createElement('details');
+const titulo = document.createElement('summary');
+
+titulo.textContent = '⚙️ Características completas';
+titulo.style.cssText =
+  'cursor:pointer;font-weight:bold;color:#d9b4ef';
+
+const contenido = document.createElement('p');
+contenido.textContent = descripcionCompleta || 'Sin información';
+contenido.style.whiteSpace = 'pre-line';
+
+detalles.append(titulo, contenido);
+datosSubasta.append(breve, detalles);
 
     const galeria = document.getElementById('locuraFotosSubasta');
     galeria.replaceChildren();
@@ -1750,7 +1872,53 @@ if (ids.includes('items')) {
 
     extras.append(detalle);
   });
+const zonaSubastas = document.createElement('section');
+zonaSubastas.id = 'locuraZonaSubastas';
 
+const panelGuardados =
+  document.getElementById('items')?.closest('.panel');
+
+if (panelGuardados) {
+  const contenedorAnterior = panelGuardados.closest('details');
+
+  tablero.after(zonaSubastas);
+  zonaSubastas.append(panelGuardados, panelSubasta);
+
+  if (contenedorAnterior) {
+    contenedorAnterior.remove();
+  }
+}
+
+const estiloSubastas = document.createElement('style');
+
+estiloSubastas.textContent = `
+  #locuraZonaSubastas {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    align-items:start;
+    margin:12px 0;
+  }
+
+  #locuraZonaSubastas > .panel {
+    min-width:0;
+    margin:0;
+  }
+
+  #locuraZonaSubastas[hidden] {
+    display:none!important;
+  }
+
+  @media(max-width:768px) {
+    #locuraZonaSubastas {
+      grid-template-columns:1fr;
+    }
+  }
+`;
+
+document.head.append(estiloSubastas);
+zonaSubastas.hidden = true;
+  
   const panelFinal = [...app.children].find(el =>
     el.classList?.contains('panel') &&
     el.querySelector('h2')?.textContent === 'Próximas integraciones'
