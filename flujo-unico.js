@@ -294,7 +294,7 @@ result.append(webSection);
 
     // El atributo multiple funciona tanto en Windows como en el selector de Android.
     input.multiple = true;
-    input.accept = 'image/jpeg,image/png,image/webp';
+    input.accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
     input.removeAttribute('capture');
     input.hidden = true;
     const oldLabel = panel.querySelector('label[for="multiPhotos"]');
@@ -549,6 +549,25 @@ result.append(webSection);
   }
   async function toJpeg(file) {
     if (!file || !file.size || file.size > LIMIT) throw Error('El archivo está vacío o supera 18 MB');
+     if (/\.(heic|heif)$/i.test(file.name) ||
+    /^image\/hei[cf]/i.test(file.type)) {
+
+  const { heicTo } = await import(
+    'https://cdn.jsdelivr.net/npm/heic-to@1.6.6/+esm'
+  );
+
+  const jpeg = await heicTo({
+    blob: file,
+    type: 'image/jpeg',
+    quality: 0.9
+  });
+
+  file = new File(
+    [jpeg],
+    file.name.replace(/\.[^.]+$/, '') + '.jpg',
+    { type: 'image/jpeg' }
+  );
+}
     // Para convertir HEIC/AVIF el navegador debe poder decodificarlo. Nunca
     // se cambia solo la extension porque eso crearia una falsa foto JPEG.
     const bitmap = await openBitmap(file);
