@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LOCURA TOTAL PRODUCT CHECK</title>
 <style>:root{font-family:system-ui,Arial;background:#101018;color:#fff}*{box-sizing:border-box}body{margin:0}header{padding:22px;background:linear-gradient(120deg,#15131d,#59205c);border-bottom:3px solid #f244b3}h1{margin:0;font-size:1.5rem}small,.muted{color:#c9c1d1}main{max-width:960px;margin:auto;padding:20px}.panel{background:#211e2b;border:1px solid #494052;border-radius:16px;padding:20px;margin-bottom:18px}h2{margin-top:0;font-size:1.15rem}label{display:block;margin:12px 0 5px;font-weight:600}input,textarea,select{width:100%;background:#12111a;color:white;border:1px solid #71647d;border-radius:9px;padding:11px;font:inherit}textarea{min-height:90px}button{border:0;border-radius:10px;background:#f244b3;color:#170b19;padding:12px 16px;font-weight:750;cursor:pointer;margin:8px 6px 0 0}button.secondary{background:#4b4058;color:white}button:disabled{opacity:.5;cursor:not-allowed}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.notice{background:#382a1d;padding:12px;border-radius:9px;color:#ffdfa4}.item{border-top:1px solid #4b4058;padding:14px 0}.status{font-weight:bold;color:#ffc66b}img.preview{max-width:180px;max-height:180px;border-radius:8px;margin-top:8px}a{color:#ff8ad0}video.scanner{width:100%;max-width:480px;max-height:320px;background:#000;border-radius:12px} .scan-controls{margin:12px 0} #scanStatus{color:#ffdfa4;white-space:pre-wrap} a{color:#ff8ad0}.hidden{display:none!important}#message,#loginMessage{min-height:24px;color:#aaf1ce;white-space:pre-wrap}.danger{color:#ffc3c3}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script></head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script><link rel="stylesheet" href="locura-diseno-live.css?v=1"></head>
 <body><header><h1>🌐 LOCURA TOTAL PRODUCT CHECK</h1><small>Control de productos y borradores para TikTok Shop · Almacenamiento en Supabase</small></header><main>
 <div id="setup" class="panel hidden"><h2>Configuración pendiente</h2><p>Antes de publicar, introduce la URL y la clave <strong>sb_publishable_</strong> de tu proyecto Supabase en las dos constantes del código. Nunca uses una clave <strong>sb_secret_</strong>.</p></div>
 <div id="loginPanel" class="panel hidden"><h2>Acceder a Locura Total</h2><form id="loginForm"><label for="email">Correo electrónico</label><input id="email" type="email" autocomplete="username" required><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password" required><button id="loginBtn" type="submit">Iniciar sesión</button></form><p id="loginMessage" role="status"></p><p class="muted">Utiliza el usuario creado en Supabase. No escribas la contraseña en GitHub.</p></div>
@@ -262,9 +262,63 @@ $('lookupCode').onclick=async()=>{const code=($('manualCode').value||$('barcode'
 $('photo').addEventListener('change',e=>{const file=e.target.files[0];if(!file){$('preview').hidden=true;return}if(!file.type.startsWith('image/')){message('Selecciona una imagen válida.',true);return}const url=URL.createObjectURL(file);$('preview').src=url;$('preview').hidden=false;$('preview').onload=()=>URL.revokeObjectURL(url)});
 $('productForm').addEventListener('reset',()=>{$('preview').hidden=true});
 $('productForm').addEventListener('submit',async e=>{e.preventDefault();if(!value('name'))return;const row={name:value('name'),barcode:value('barcode')||null,brand:value('brand')||null,manufacturer:value('manufacturer')||null,weight:value('weight')===''?null:Number(value('weight')),price:value('price')===''?null:Number(value('price')),condition:value('condition'),auth:value('auth'),features:value('features')||null,approved:false};$('saveBtn').disabled=true;message('Guardando en Supabase...');const {error}=await db.from('productos').insert(row);$('saveBtn').disabled=false;if(error){message('No se pudo guardar: '+errText(error),true);return}e.target.reset();message('Borrador guardado en Supabase.');await loadProducts()});
+async function editarGuardado(p) {
+  const dialogo = document.createElement('dialog');
+  dialogo.className = 'lt-edit-dialog';
+  const editor = document.createElement('form');
+  const titulo = document.createElement('h2');
+  titulo.textContent = 'Editar producto guardado';
+  editor.append(titulo);
+  const campos = {};
+  for (const [key,label] of [['name','Nombre'],['brand','Marca'],['model','Modelo'],['condition','Estado'],['features','Descripción y características']]) {
+    const l = document.createElement('label');
+    l.textContent = label;
+    const campo = key === 'condition' ? $('condition').cloneNode(true) : document.createElement(key === 'features' ? 'textarea' : 'input');
+    campo.removeAttribute('id');
+    campo.value = p[key] || '';
+    if (key === 'condition' && !campo.value) {
+      campo.value = 'Sin comprobar';
+    }
+    if(key === 'name') campo.required = true;
+    l.append(campo);
+    editor.append(l);
+    campos[key] = campo;
+  }
+  const aviso = document.createElement('p');
+  aviso.setAttribute('role','status');
+  const guardar = document.createElement('button');
+  guardar.type = 'submit'; guardar.textContent = 'Guardar cambios';
+  const cancelar = document.createElement('button');
+  cancelar.type = 'button'; cancelar.className = 'secondary'; cancelar.textContent = 'Cancelar';
+  cancelar.onclick = () => dialogo.close();
+  editor.append(aviso,guardar,cancelar);
+  dialogo.append(editor);
+  document.body.append(dialogo);
+  dialogo.addEventListener('close',()=>dialogo.remove(),{once:true});
+  editor.addEventListener('submit',async e=>{
+    e.preventDefault();
+    guardar.disabled = cancelar.disabled = true;
+    const fila = Object.fromEntries(Object.entries(campos).map(([k,v])=>[k,v.value.trim() || null]));
+    if(!fila.name) { aviso.textContent='Introduce un nombre.'; guardar.disabled=cancelar.disabled=false; return; }
+    fila.approved=false;
+    try {
+      const {error} = await db.from('productos').update(fila).eq('id',p.id).select('id').single();
+      if(error) throw error;
+      dialogo.close();
+      document.querySelector('#locuraCompacto button[data-paso="guardados"]')?.click();
+      await loadProducts();
+    } catch(err) {
+      aviso.textContent='No se pudo guardar: '+errText(err);
+      guardar.disabled=cancelar.disabled=false;
+    }
+  });
+  dialogo.showModal();
+}
 function render() {
   const list = $('items');
   list.replaceChildren();
+  const tituloLista = list.closest('.panel')?.querySelector('h2');
+  if (tituloLista) tituloLista.textContent = '📦 5. Productos guardados (' + products.length + ')';
   
 let buscador = document.getElementById('locuraBuscarGuardados');
 
@@ -302,6 +356,7 @@ queueMicrotask(filtrarProductos);
   for (const p of products) {
     const d = document.createElement('div');
     d.className = 'item';
+    d.dataset.productId = String(p.id);
 
     const h = document.createElement('h3');
     h.textContent = p.name;
@@ -317,7 +372,12 @@ miniatura.style.cssText =
 
 miniatura.textContent = '📦';
 
-cabecera.append(miniatura, h);
+cabecera.className = 'lt-card-head';
+const identidad = document.createElement('div');
+const marcaModelo = document.createElement('small');
+marcaModelo.textContent = [p.brand,p.model].filter(Boolean).join(' · ');
+identidad.append(h,marcaModelo);
+cabecera.append(miniatura, identidad);
 d.prepend(cabecera);
 
 const ruta = Array.isArray(p.image_urls)
@@ -347,7 +407,8 @@ if (ruta) {
 estado.textContent = 'Estado: ' + (p.condition || 'Sin comprobar');
 estado.style.cssText =
   'color:#9be8ae;font-weight:bold;margin:5px 0';
-d.append(estado);
+estado.className = 'lt-condition';
+identidad.append(estado);
 
 const detalles = document.createElement('details');
 const resumen = document.createElement('summary');
@@ -385,6 +446,8 @@ d.append(detalles);
     d.append(status);
 
     const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary lt-approve';
     btn.textContent = p.approved
       ? 'Volver a pendiente'
       : 'Aprobar borrador';
@@ -408,6 +471,7 @@ d.append(detalles);
 
     const subasta = document.createElement('button');
     subasta.type = 'button';
+    subasta.className = 'lt-send';
     subasta.textContent = '🔨 ENVIAR A SUBASTA LIVE';
     subasta.style.cssText =
       'background:#f244b3;color:white;font-weight:bold;width:100%;margin-top:10px';
@@ -420,6 +484,12 @@ d.append(detalles);
     };
 
     d.append(subasta);
+    const editar = document.createElement('button');
+    editar.type = 'button';
+    editar.className = 'secondary lt-edit';
+    editar.textContent = '✎ Editar';
+    editar.onclick = () => editarGuardado(p);
+    d.append(editar);
     list.append(d);
   }
 }$('export').onclick=()=>{const blob=new Blob([JSON.stringify(products,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='locura-total-productos-supabase.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
@@ -1196,7 +1266,8 @@ panelSubasta.id = 'locuraPreparacionSubasta';
 panelSubasta.className = 'panel hidden';
 
 panelSubasta.innerHTML = `
-  <h3>🔨 Preparar subasta temporal</h3>
+  <h3>🔨 6. Subasta temporal LIVE</h3>
+  <p class="lt-empty-auction">Selecciona un producto guardado y pulsa Enviar a subasta LIVE.</p>
   <p>Modo preparación. No publica en TikTok Shop.</p>
 
   <p id="locuraSubastaProducto">Producto: pendiente</p>
@@ -1578,7 +1649,10 @@ const tarjetas = [
 
   const buttons = [];
 
+  let solicitudSubasta = 0;
   function abrir(paso, analizar = false) {
+    if(paso !== 'subasta') solicitudSubasta++;
+    panelSubasta.dataset.vacio = String(paso === 'guardados');
     registro.dataset.paso = paso;
 const zona = document.getElementById('locuraZonaSubastas');
 
@@ -1588,7 +1662,7 @@ if (zona) {
 }
 
 registro.classList.toggle('hidden', paso === 'guardados');
-panelSubasta.classList.toggle('hidden', paso !== 'subasta');
+panelSubasta.classList.toggle('hidden', paso !== 'subasta' && paso !== 'guardados');
 panelFotosWeb.classList.toggle('hidden', paso !== 'mejora');
 
 if (paso === 'mejora') {
@@ -1651,6 +1725,7 @@ let vistaFotos = document.getElementById('locuraFotosSubasta');
 if (!vistaFotos) {
   vistaFotos = document.createElement('div');
   vistaFotos.id = 'locuraFotosSubasta';
+  vistaFotos.addEventListener('click', e=>{ const foto=e.target.closest('img,canvas'); if(foto && foto.parentElement===vistaFotos) vistaFotos.prepend(foto); });
   vistaFotos.style.cssText =
     'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0';
   resumen.before(vistaFotos);
@@ -1746,6 +1821,7 @@ boton.addEventListener('click', () => {
 let productoSubastaGuardado = null;
 
 document.addEventListener('locuraSubastaGuardada', async (e) => {
+  const solicitud = ++solicitudSubasta;
   try {
     const db = window.locuraDb;
 
@@ -1755,12 +1831,14 @@ document.addEventListener('locuraSubastaGuardada', async (e) => {
       .eq('id', e.detail.id)
       .single();
 
+    if (solicitud !== solicitudSubasta) return;
     if (error || !p) {
       throw new Error('No se pudo recuperar el producto');
     }
 
     abrir('subasta');
     productoSubastaGuardado = p;
+    document.querySelectorAll('#items > .item').forEach(card => card.classList.toggle('lt-selected',card.dataset.productId === String(p.id)));
 
     document.getElementById('locuraSubastaProducto').textContent =
       'Producto: ' + p.name;
@@ -1824,7 +1902,7 @@ datosSubasta.append(breve, detalles);
         .from('locura-productos')
         .createSignedUrl(ruta, 600);
 
-      if (productoSubastaGuardado !== p) return;
+      if (productoSubastaGuardado !== p || solicitud !== solicitudSubasta) return;
 
       if (!error && data?.signedUrl) {
         const img = document.createElement('img');
@@ -1839,7 +1917,7 @@ datosSubasta.append(breve, detalles);
       'Producto recuperado. Fotografías: ' + galeria.children.length +
       '. Introduce la puja inicial.';
 
-    panelSubasta.scrollIntoView({ behavior: 'smooth' });
+    if (window.matchMedia('(max-width: 768px)').matches) panelSubasta.scrollIntoView({ behavior: 'smooth',block:'start' });
 
   } catch (error) {
     alert(error.message);
@@ -1918,6 +1996,36 @@ estiloSubastas.textContent = `
 
 document.head.append(estiloSubastas);
 zonaSubastas.hidden = true;
+const marcaLocura = document.createElement('div');
+marcaLocura.className = 'lt-logo';
+marcaLocura.innerHTML = '<span>LOCURA</span><strong>TOTAL</strong>';
+tablero.prepend(marcaLocura);
+const navegacion = document.createElement('nav');
+navegacion.className = 'lt-nav';
+navegacion.setAttribute('aria-label','Navegación principal');
+function nav(label,accion) {
+  const b=document.createElement('button');
+  b.type='button'; b.textContent=label; b.onclick=accion; navegacion.append(b);
+}
+nav('⌂ Inicio',()=>abrir('foto'));
+nav('▣ Colección',()=>{document.querySelector('#locuraCompacto button[data-paso="guardados"]')?.click();});
+nav('🔗 Conexión y cuenta',()=>{const d=document.getElementById('logout')?.closest('details');if(d){d.open=true;d.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+nav('⚙ Otras opciones',()=>{const d=[...extras.querySelectorAll(':scope > details')].find(x=>x.querySelector('summary')?.textContent.includes('Otras opciones'));if(d){d.open=true;d.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+tablero.append(navegacion);
+const etiquetas = [['📷','Foto + escáner','IA + Internet'],['🖼','Buscar fotos','Internet'],['📝','Ficha','Revisión'],['💾','Guardar','Ficha'],['📦','Productos','guardados'],['🔨','Subasta','LIVE']];
+buttons.forEach((b,i)=>{
+  const [icono,l1,l2]=etiquetas[i];
+  b.setAttribute('aria-label',tarjetas[i][1]);
+  const ico=document.createElement('span');ico.className='lt-step-icon';ico.textContent=icono;
+  const nombre=document.createElement('span');nombre.textContent=(i+1)+'. '+l1;
+  const sub=document.createElement('span');sub.textContent=l2;
+  b.replaceChildren(ico,nombre,sub);
+});
+const hojaLocura = document.createElement('link');
+hojaLocura.rel='stylesheet';
+hojaLocura.href='locura-diseno-live.css?v=1';
+document.head.append(hojaLocura);
+abrir('guardados');
   
   const panelFinal = [...app.children].find(el =>
     el.classList?.contains('panel') &&
