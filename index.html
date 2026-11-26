@@ -41,6 +41,7 @@ window.buscarProductoWeb = () =>
     body: {
       name: $('name').value,
       brand: $('brand').value,
+      model: $('model').value,
       barcode: $('barcode').value
     }
   });
@@ -940,7 +941,19 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const registro = form.parentElement;
   registro.id = 'locuraRegistroCompacto';
+  
+const botonConsultaFicha =
+  document.getElementById('consultarWeb');
 
+const panelConsultaFicha =
+  botonConsultaFicha?.closest('.panel');
+
+if (panelConsultaFicha) {
+  botonConsultaFicha.textContent =
+    '🌐 Buscar y completar información en Internet';
+
+  form.querySelector('.grid')?.after(panelConsultaFicha);
+}
   const estilo = document.createElement('style');
   estilo.textContent = `
     #locuraCompacto{padding:12px;margin-bottom:10px}
