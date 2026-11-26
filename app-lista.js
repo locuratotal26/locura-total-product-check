@@ -254,7 +254,8 @@ if (!(data instanceof Blob)) {
       if (error) return;
       cards.forEach((card,i) => {
         if (card.querySelector('.locura-see-photos')) return;
-        const paths = Array.isArray(data?.[i]?.image_urls) ? data[i].image_urls.filter(s=>typeof s==='string' && s.length<300) : [];
+        const row = data?.find(r => String(r.id) === card.dataset.productId);
+        const paths = Array.isArray(row?.image_urls) ? row.image_urls.filter(s=>typeof s==='string' && s.length<300) : [];
         if (!paths.length) return;
         const btn = document.createElement('button');
         btn.type = 'button';
