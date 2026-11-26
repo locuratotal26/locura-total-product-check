@@ -970,32 +970,30 @@ window.addEventListener('DOMContentLoaded', () => {
     #locuraRegistroCompacto #locuraPhotoGuide,
     #locuraRegistroCompacto #locuraDropArea{display:none!important}
 
-/* Ocultar el cuadro grande Fotografías */
-#locuraRegistroCompacto[data-paso="foto"] #locuraMultifoto {
+/* Foto + escáner + IA + Internet */
+
+#locuraRegistroCompacto[data-paso="foto"] #productForm,
+#locuraRegistroCompacto[data-paso="foto"] #message,
+#locuraRegistroCompacto[data-paso="ia"] #productForm,
+#locuraRegistroCompacto[data-paso="ia"] #message {
   display: none !important;
 }
 
-    #locuraRegistroCompacto[data-paso="foto"] #productForm,
-    #locuraRegistroCompacto[data-paso="foto"] #message,
-    #locuraRegistroCompacto[data-paso="foto"] #multiAnalyze,
-    #locuraRegistroCompacto[data-paso="foto"] #multiResult{
-      display:none!important
-    }
-    #locuraRegistroCompacto[data-paso="ia"] #productForm,
-    #locuraRegistroCompacto[data-paso="ia"] #message,
-    #locuraRegistroCompacto[data-paso="ia"] #locuraTools{
-      display:none!important
-    }
-    #locuraRegistroCompacto[data-paso="ia"]
-    #locuraMultifoto>:not(#multiAnalyze):not(#multiStatus):not(#multiResult){
-      display:none!important
-    }
+#locuraRegistroCompacto #locuraMultifoto {
+  border: 0;
+  padding: 5px;
+  margin: 0;
+}
     #locuraRegistroCompacto[data-paso="ficha"] #locuraMultifoto,
     #locuraRegistroCompacto[data-paso="ficha"] #locuraTools,
     #locuraRegistroCompacto[data-paso="revision"] #locuraMultifoto,
     #locuraRegistroCompacto[data-paso="revision"] #locuraTools{
       display:none!important
     }
+    #locuraRegistroCompacto[data-paso="mejora"],
+#locuraRegistroCompacto[data-paso="subasta"] {
+  display: none !important;
+}
     #locuraExtra details{
       margin:8px 0;padding:10px;
       border:1px solid #65526b;border-radius:12px
@@ -1372,17 +1370,15 @@ buscar.addEventListener('click', async () => {
     buscar.disabled = false;
   }
 });
-  const tarjetas = [
-
-['📸', '1. Foto + escáner + IA + Internet', 'foto', true],
-    
-['🖼️', '2. Buscar y elegir 5 fotos en Internet', 'mejora', true],
-
-    ['🔎', '3. IA + Internet', 'ia', true],
-    ['📝', '4. Ficha automática', 'ficha', true],
-    ['✅', '5. Revisar estado y precio', 'revision', true],
-    ['🔨', '6. preparar Subasta temporal', 'subasta', true]
-  ];
+ 
+const tarjetas = [
+  ['📸', '1. Foto + escáner + IA + Internet', 'foto', true],
+  ['🖼️', '2. Buscar y elegir 5 fotos en Internet', 'mejora', true],
+  ['📝', '3. Ficha automática + revisión y precio', 'ficha', true],
+  ['💾', '4. Guardar ficha del producto', 'guardar', true],
+  ['📦', '5. Productos guardados', 'guardados', true],
+  ['🔨', '6. Subasta temporal LIVE', 'subasta', true]
+];
 
   const buttons = [];
 
@@ -1505,8 +1501,33 @@ vistaFotos.append(lienzo);
     boton.textContent = icono + ' ' + texto;
     
 boton.addEventListener('click', () => {
+
+  if (paso === 'guardar') {
+    abrir('ficha');
+    form.requestSubmit();
+    return;
+  }
+
+  if (['productos', 'guardados', 'items'].includes(paso)) {
+    const lista = document.getElementById('items');
+    const desplegable = lista?.closest('details');
+
+    if (desplegable) desplegable.open = true;
+
+    lista?.closest('.panel')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+
+    return;
+  }
+
   abrir(paso, paso === 'ia');
-  if (paso === 'foto') document.getElementById('locuraChooseMany')?.click();
+
+  if (paso === 'foto') {
+    document.getElementById('locuraChooseMany')?.click();
+  }
+
 });
 
     pasos.append(boton);
@@ -1533,7 +1554,12 @@ boton.addEventListener('click', () => {
     const resumen = document.createElement('summary');
     resumen.textContent = nombre;
     detalle.append(resumen);
-
+    
+if (ids.includes('items')) {
+  resumen.hidden = true;
+  detalle.style.cssText =
+    'border:0;padding:0;margin:0';
+}
     ids.forEach(id => {
       const panel = document.getElementById(id)?.closest('.panel');
       if (panel && panel !== registro) detalle.append(panel);
