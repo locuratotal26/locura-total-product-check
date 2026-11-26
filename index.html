@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LOCURA TOTAL PRODUCT CHECK</title>
 <style>:root{font-family:system-ui,Arial;background:#101018;color:#fff}*{box-sizing:border-box}body{margin:0}header{padding:22px;background:linear-gradient(120deg,#15131d,#59205c);border-bottom:3px solid #f244b3}h1{margin:0;font-size:1.5rem}small,.muted{color:#c9c1d1}main{max-width:960px;margin:auto;padding:20px}.panel{background:#211e2b;border:1px solid #494052;border-radius:16px;padding:20px;margin-bottom:18px}h2{margin-top:0;font-size:1.15rem}label{display:block;margin:12px 0 5px;font-weight:600}input,textarea,select{width:100%;background:#12111a;color:white;border:1px solid #71647d;border-radius:9px;padding:11px;font:inherit}textarea{min-height:90px}button{border:0;border-radius:10px;background:#f244b3;color:#170b19;padding:12px 16px;font-weight:750;cursor:pointer;margin:8px 6px 0 0}button.secondary{background:#4b4058;color:white}button:disabled{opacity:.5;cursor:not-allowed}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.notice{background:#382a1d;padding:12px;border-radius:9px;color:#ffdfa4}.item{border-top:1px solid #4b4058;padding:14px 0}.status{font-weight:bold;color:#ffc66b}img.preview{max-width:180px;max-height:180px;border-radius:8px;margin-top:8px}a{color:#ff8ad0}video.scanner{width:100%;max-width:480px;max-height:320px;background:#000;border-radius:12px} .scan-controls{margin:12px 0} #scanStatus{color:#ffdfa4;white-space:pre-wrap} a{color:#ff8ad0}.hidden{display:none!important}#message,#loginMessage{min-height:24px;color:#aaf1ce;white-space:pre-wrap}.danger{color:#ffc3c3}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script><link rel="stylesheet" href="locura-diseno-live.css?v=1"></head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script></head>
 <body><header><h1>🌐 LOCURA TOTAL PRODUCT CHECK</h1><small>Control de productos y borradores para TikTok Shop · Almacenamiento en Supabase</small></header><main>
 <div id="setup" class="panel hidden"><h2>Configuración pendiente</h2><p>Antes de publicar, introduce la URL y la clave <strong>sb_publishable_</strong> de tu proyecto Supabase en las dos constantes del código. Nunca uses una clave <strong>sb_secret_</strong>.</p></div>
 <div id="loginPanel" class="panel hidden"><h2>Acceder a Locura Total</h2><form id="loginForm"><label for="email">Correo electrónico</label><input id="email" type="email" autocomplete="username" required><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password" required><button id="loginBtn" type="submit">Iniciar sesión</button></form><p id="loginMessage" role="status"></p><p class="muted">Utiliza el usuario creado en Supabase. No escribas la contraseña en GitHub.</p></div>
@@ -1381,6 +1381,8 @@ campoPuja.addEventListener('input', () => {
 
 pasos.addEventListener('click', e => {
   if (e.target.closest('button[data-paso]')) {
+    solicitudSubasta++;
+    document.querySelectorAll('#items > .item.lt-selected').forEach(card=>card.classList.remove('lt-selected'));
     productoSubastaGuardado = null;
     campoPuja.value = '';
     botonCopiar.disabled = true;
@@ -1651,7 +1653,10 @@ const tarjetas = [
 
   let solicitudSubasta = 0;
   function abrir(paso, analizar = false) {
-    if(paso !== 'subasta') solicitudSubasta++;
+    if(paso !== 'subasta') {
+      solicitudSubasta++;
+      document.querySelectorAll('#items > .item.lt-selected').forEach(card=>card.classList.remove('lt-selected'));
+    }
     panelSubasta.dataset.vacio = String(paso === 'guardados');
     registro.dataset.paso = paso;
 const zona = document.getElementById('locuraZonaSubastas');
@@ -1768,7 +1773,9 @@ vistaFotos.append(lienzo);
       paso === 'foto' ? 'Elige fotos o usa la cámara. Hasta 6 imágenes.' :
       paso === 'ia' ? 'La IA analiza las fotos y busca datos en Internet.' :
       paso === 'ficha' ? 'Revisa la ficha antes de guardarla.' :
-      'Comprueba el estado real y el precio antes de guardar.';
+      paso === 'guardados' ? 'Selecciona un producto guardado para preparar la subasta.' :
+    paso === 'subasta' ? 'Introduce la puja y revisa la ficha antes de copiarla.' :
+    'Comprueba el estado real y el precio antes de guardar.';
   }
 
   tarjetas.forEach(([icono, texto, paso, activo]) => {
