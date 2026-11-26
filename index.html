@@ -230,7 +230,8 @@ function setCode(code) {
   // Otros códigos internos o logísticos.
   const etiqueta = raw.toUpperCase();
 
-  if (/^[A-Z0-9][A-Z0-9 _-]{4,47}$/.test(etiqueta)) {
+if (/^[A-Z0-9][A-Z0-9@ _-]{4,47}$/.test(etiqueta)) {
+
     $('manualCode').value = etiqueta;
 
     const campo = $('features');
