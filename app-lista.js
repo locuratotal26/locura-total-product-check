@@ -86,12 +86,15 @@
     try {
       const {data:auth, error:authError} = await db.auth.getUser();
       if (authError || !auth?.user?.id) throw new Error('Debes iniciar sesión para guardar.');
-const files = selected.length
-  ? selected.slice(0, MAX)
-  : [...($('photo')?.files || [])].slice(0, 1);
 
 const fotosInternet =
-  window.locuraObtenerFotosWeb?.() || [];
+  (window.locuraObtenerFotosWeb?.() || []).slice(0, 5);
+
+const huecos = Math.max(0, MAX - fotosInternet.length);
+
+const files = selected.length
+  ? selected.slice(0, huecos)
+  : [...($('photo')?.files || [])].slice(0, Math.min(1, huecos));
 
 for (const [i, foto] of fotosInternet.entries()) {
   if (foto.archivo) {
