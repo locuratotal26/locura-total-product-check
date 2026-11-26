@@ -248,7 +248,7 @@ function setCode(code) {
     return true;
   }
 
-  scanStatus('⚠️ Código no reconocido. Comprueba la etiqueta.');
+scanStatus('🔎 Código leído: ' + JSON.stringify(raw) + ' | Caracteres: ' + raw.length);
   return false;
 }
 function stopCamera(){scanning=false;if(scanTimer){clearTimeout(scanTimer);scanTimer=null}if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}$('scanVideo').srcObject=null;$('scanVideo').classList.add('hidden');$('startScan').disabled=false;$('stopScan').disabled=true}
