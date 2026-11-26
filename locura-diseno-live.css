@@ -77,3 +77,82 @@ main{max-width:1640px!important;width:100%;padding:14px 22px}
  #locuraFotosSubasta>:first-child{height:180px!important}
 }
 @media(max-width:350px){#locuraCompacto .pasos{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Segunda revisión: legibilidad, controles y espacio útil. */
+body:has(#app:not(.hidden) #locuraCompacto)>header{display:none}
+main{max-width:1740px!important;padding:12px 18px}
+#locuraCompacto{grid-template-columns:168px minmax(0,1fr);background:#090b17;border-color:#514570;gap:9px}
+.lt-logo{font-size:34px;filter:drop-shadow(0 2px 5px #e5259d45)}
+.lt-logo strong{font-size:40px;display:flex;align-items:center;position:relative}
+.lt-logo strong svg{width:30px;height:27px;margin-right:2px}
+.lt-logo strong:after{content:'';position:absolute;left:8%;right:0;bottom:-6px;height:4px;border-radius:50%;background:#ff27a9;transform:rotate(-4deg)}
+#locuraCompacto .pasos button{font-size:14px;min-height:94px;background:linear-gradient(145deg,#0a2a46,#0a1024);box-shadow:inset 0 0 12px #1288de22}
+.lt-step-icon{font-size:29px}
+#locuraCompacto .pasos button:nth-child(n+5){background:linear-gradient(145deg,#3a102f,#180c22);box-shadow:inset 0 0 11px #e832b02b}
+#locuraCompacto .pasos button[aria-pressed=true]{box-shadow:0 0 12px #fa2fa790,inset 0 0 10px #f923a43b}
+#locuraCompacto:has(button[data-paso=guardados][aria-pressed=true])>label,#locuraCompacto:has(button[data-paso=subasta][aria-pressed=true])>label{display:none!important}
+.lt-nav{align-items:center}.lt-session{margin-left:auto;color:#a8efb2;background:#102b1b;border:1px solid #358a50;border-radius:8px;padding:6px 9px;font-size:12px}
+#locuraZonaSubastas{grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr)}
+#locuraZonaSubastas>.panel{background:#090b17}
+#locuraZonaSubastas>.panel>h2,#locuraPreparacionSubasta>h3{font-size:22px}
+#locuraZonaSubastas>.panel>p.muted{font-size:12px}
+#items{max-height: min(680px, 70vh);overflow:auto;overscroll-behavior:contain;padding:2px 5px 2px 2px;scrollbar-width:thin}
+#items>.item{padding:10px;background:#101020;gap:5px 9px}
+#items>.item .lt-card-head{gap:9px!important}
+#items>.item .lt-card-head>div:first-child,#items>.item .lt-card-head img{width:100px!important;height:100px!important}
+#items>.item h3{font-size:17px}
+#items>.item small{display:block;font-size:12px;margin-top:4px}
+.lt-condition{display:inline-block;background:#153820;color:#b8f6c3!important;border:1px solid #37864c;border-radius:6px;padding:2px 6px;font-size:12px}
+.lt-condition[data-condition="Sin comprobar"],.lt-condition[data-condition="Para piezas"]{background:#392b18;color:#ffda96!important;border-color:#a57938}
+#items>.item>details summary{margin:4px 0!important}
+#items>.item>button{font-size:12px;min-height:30px}
+#items>.item>.lt-send{max-width:130px}
+#items>.item.lt-selected{box-shadow:0 0 12px #ef29a966}
+#locuraPreparacionSubasta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+#locuraPreparacionSubasta>*{grid-column:1/-1;min-width:0}
+#locuraPreparacionSubasta>h3{margin:0;padding-bottom:9px}
+#locuraPreparacionSubasta>.lt-auction-note{font-size:12px;color:#c4b5d4;margin:0}
+#locuraSubastaProducto{font-size:22px!important;margin:0!important}
+#locuraSubastaEstado{margin:0!important}
+#locuraFotosSubasta{margin:0!important}
+#locuraFotosSubasta>:first-child{height:clamp(210px,23vw,320px)!important;cursor:pointer}
+#locuraFotosSubasta>:not(:first-child){height:70px!important}
+#locuraFotosSubasta>:focus-visible{outline:2px solid #ff40b0}
+#locuraDatosSubasta{padding:10px;font-size:14px}
+.lt-auction-description p{margin:4px 0 8px}
+.lt-auction-meta{color:#c1c4da;font-size:13px}
+.lt-bid-controls{display:flex;gap:5px;align-items:center}
+.lt-bid-controls input{min-width:0;flex:1;font-size:18px;font-weight:700}
+.lt-bid-controls button{margin:0;background:#20162c;color:#ff9cdb;border:1px solid #7e426a;font-size:20px;padding:5px 12px}
+#locuraPreparacionSubasta>button{margin:0!important;width:100%!important;min-height:42px}
+#locuraRevisar{grid-column:1/-1;font-size:16px!important}
+#locuraCopiarFicha{grid-column:1}
+#locuraPublicarTikTok{grid-column:2;font-size:12px!important;padding:9px 4px!important}
+#locuraEstadoPublicacion,#locuraSubastaAviso{border:1px solid #38354b;background:#101220;padding:7px 9px;border-radius:8px;font-size:12px!important;margin:0!important}
+#locuraSubastaAviso:empty{display:none}
+@media(max-width:768px){
+ main{padding:7px}
+ #locuraCompacto{padding:8px;gap:7px}
+ .lt-logo{font-size:27px;margin:5px 0 9px}.lt-logo strong{font-size:32px}.lt-logo strong svg{width:23px;height:22px}
+ #locuraCompacto .pasos button{font-size:10px;min-height:72px}
+ .lt-step-icon{font-size:23px}
+ .lt-session{font-size:10px;padding:5px;margin-left:0}
+ #locuraZonaSubastas{grid-template-columns:minmax(0,1fr);gap:10px;margin:8px 0}
+ #locuraZonaSubastas>.panel{padding:9px}
+ #locuraZonaSubastas>.panel>h2,#locuraPreparacionSubasta>h3{font-size:17px;margin-bottom:5px}
+ #items{max-height:420px}
+ #items>.item{padding:7px;gap:4px 6px}
+ #items>.item .lt-card-head>div:first-child,#items>.item .lt-card-head img{width:76px!important;height:76px!important}
+ #items>.item h3{font-size:14px}
+ #items>.item small{font-size:11px}
+ #items>.item>.lt-send{max-width:104px;font-size:11px}
+ #items>.item>button{padding:5px 7px;font-size:11px}
+ #items>.item>details{font-size:11px}
+ #items>.item>.status{font-size:10px}
+ #locuraSubastaProducto{font-size:19px!important}
+ #locuraFotosSubasta>:first-child{height:210px!important}
+ #locuraFotosSubasta>:not(:first-child){height:53px!important}
+ #locuraDatosSubasta{font-size:13px}
+ #locuraCopiarFicha{font-size:12px!important}
+}
+@media(max-width:350px){#locuraCompacto .pasos{grid-template-columns:repeat(3,minmax(0,1fr))}#items>.item .lt-card-head>div:first-child,#items>.item .lt-card-head img{width:60px!important;height:60px!important}}
