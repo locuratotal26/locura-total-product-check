@@ -404,7 +404,8 @@ if (ruta) {
     }).catch(console.warn);
 }
   const estado = document.createElement('p');
-estado.textContent = 'Estado: ' + (p.condition || 'Sin comprobar');
+estado.textContent = p.condition || 'Sin comprobar';
+estado.dataset.condition = p.condition || 'Sin comprobar';
 estado.style.cssText =
   'color:#9be8ae;font-weight:bold;margin:5px 0';
 estado.className = 'lt-condition';
@@ -1268,17 +1269,17 @@ panelSubasta.className = 'panel hidden';
 panelSubasta.innerHTML = `
   <h3>🔨 6. Subasta temporal LIVE</h3>
   <p class="lt-empty-auction">Selecciona un producto guardado y pulsa Enviar a subasta LIVE.</p>
-  <p>Modo preparación. No publica en TikTok Shop.</p>
+  <p class="lt-auction-note">Modo preparación · No publica en TikTok Shop</p>
 
   <p id="locuraSubastaProducto">Producto: pendiente</p>
   <p id="locuraSubastaEstado">Estado: pendiente</p>
 
-  <label for="locuraPuja">Puja inicial (€)</label>
+  <label for="locuraPuja">💶 Puja inicial (€)</label>
   <input id="locuraPuja" type="number"
          min="0.01" step="0.01" placeholder="3.00">
 
   <button type="button" id="locuraRevisar" disabled>
-    Revisar subasta
+    ✓ Revisar subasta
   </button>
   
 <button type="button" id="locuraCopiarFicha" disabled>
@@ -1304,6 +1305,12 @@ const botonRevisar = document.getElementById('locuraRevisar');
 const botonCopiar = document.getElementById('locuraCopiarFicha');
 const avisoSubasta = document.getElementById('locuraSubastaAviso');
 const campoPuja = document.getElementById('locuraPuja');
+const controlesPuja = document.createElement('div'); controlesPuja.className='lt-bid-controls';
+campoPuja.after(controlesPuja); controlesPuja.append(campoPuja);
+for(const [simbolo,delta] of [['−',-1],['+',1]]) {
+ const b=document.createElement('button'); b.type='button'; b.textContent=simbolo; b.setAttribute('aria-label',delta>0?'Aumentar puja un euro':'Reducir puja un euro');
+ b.onclick=()=>{campoPuja.value=Math.max(.01,Math.round(((Number(campoPuja.value)||0)+delta)*100)/100).toFixed(2);campoPuja.dispatchEvent(new Event('input',{bubbles:true}));}; controlesPuja.append(b);
+}
 
 botonRevisar.disabled = false;
 
@@ -1730,7 +1737,9 @@ let vistaFotos = document.getElementById('locuraFotosSubasta');
 if (!vistaFotos) {
   vistaFotos = document.createElement('div');
   vistaFotos.id = 'locuraFotosSubasta';
-  vistaFotos.addEventListener('click', e=>{ const foto=e.target.closest('img,canvas'); if(foto && foto.parentElement===vistaFotos) vistaFotos.prepend(foto); });
+  const elegirFoto = foto=>{if(foto && foto.parentElement===vistaFotos) vistaFotos.prepend(foto);};
+  vistaFotos.addEventListener('click',e=>elegirFoto(e.target.closest('img,canvas')));
+  vistaFotos.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const foto=e.target.closest('img,canvas');if(foto){e.preventDefault();elegirFoto(foto);}}});
   vistaFotos.style.cssText =
     'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0';
   resumen.before(vistaFotos);
@@ -1749,7 +1758,8 @@ document.querySelectorAll('#multiThumbs img').forEach((foto, i) => {
 
 lienzo.style.cssText =
   'display:block;width:100%;height:140px;object-fit:contain;background:white;border-radius:10px';
-lienzo.setAttribute('aria-label', 'Foto ' + (i + 1));
+lienzo.setAttribute('aria-label', 'Mostrar foto ' + (i + 1));
+lienzo.tabIndex=0; lienzo.setAttribute('role','button');
 vistaFotos.append(lienzo);
  
 });
@@ -1878,14 +1888,12 @@ const descripcionCorta = descripcionBase.length > 150
 
 datosSubasta.replaceChildren();
 
-const breve = document.createElement('p');
-breve.style.whiteSpace = 'pre-line';
-
-breve.textContent = [
-  'Marca: ' + (p.brand || 'Pendiente'),
-  'Modelo: ' + (p.model || 'Pendiente'),
-  'Descripción: ' + (descripcionCorta || 'Pendiente')
-].join('\n');
+const breve = document.createElement('div');
+breve.className='lt-auction-description';
+const metadatos=document.createElement('p'); metadatos.className='lt-auction-meta'; metadatos.textContent='Marca: '+(p.brand||'Pendiente')+' · Modelo: '+(p.model||'Pendiente');
+const rotulo=document.createElement('strong'); rotulo.textContent='▤ Descripción corta';
+const textoBreve=document.createElement('p'); textoBreve.textContent=descripcionCorta||'Pendiente';
+breve.append(metadatos,rotulo,textoBreve);
 
 const detalles = document.createElement('details');
 const titulo = document.createElement('summary');
@@ -1914,6 +1922,8 @@ datosSubasta.append(breve, detalles);
       if (!error && data?.signedUrl) {
         const img = document.createElement('img');
         img.src = data.signedUrl;
+        img.alt = p.name + ' · Foto ' + (galeria.children.length+1);
+        img.tabIndex=0; img.setAttribute('role','button');
         img.style.cssText =
           'width:100%;height:140px;object-fit:contain;border-radius:10px';
         galeria.append(img);
@@ -2005,7 +2015,8 @@ document.head.append(estiloSubastas);
 zonaSubastas.hidden = true;
 const marcaLocura = document.createElement('div');
 marcaLocura.className = 'lt-logo';
-marcaLocura.innerHTML = '<span>LOCURA</span><strong>TOTAL</strong>';
+marcaLocura.innerHTML = '<span>LOCURA</span><strong><svg viewBox="0 0 32 28" aria-hidden="true"><path d="M2 3h4l4 15h16l4-11H8M12 23h1m11 0h1" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>TOTAL</strong>'; 
+marcaLocura.setAttribute('aria-label','Locura Total');
 tablero.prepend(marcaLocura);
 const navegacion = document.createElement('nav');
 navegacion.className = 'lt-nav';
@@ -2019,6 +2030,13 @@ nav('▣ Colección',()=>{document.querySelector('#locuraCompacto button[data-pa
 nav('🔗 Conexión y cuenta',()=>{const d=document.getElementById('logout')?.closest('details');if(d){d.open=true;d.scrollIntoView({block:'nearest',behavior:'smooth'});}});
 nav('⚙ Otras opciones',()=>{const d=[...extras.querySelectorAll(':scope > details')].find(x=>x.querySelector('summary')?.textContent.includes('Otras opciones'));if(d){d.open=true;d.scrollIntoView({block:'nearest',behavior:'smooth'});}});
 tablero.append(navegacion);
+const indicador = document.createElement('span');
+indicador.className = 'lt-session'; indicador.textContent = '● Sesión iniciada';
+navegacion.append(indicador);
+const actualizar = document.getElementById('refresh');
+if(actualizar) { actualizar.textContent = '↻ Actualizar'; }
+const exportar = document.getElementById('export');
+if(exportar) { exportar.textContent = 'Exportar copia JSON'; }
 const etiquetas = [['📷','Foto + escáner','IA + Internet'],['🖼','Buscar fotos','Internet'],['📝','Ficha','Revisión'],['💾','Guardar','Ficha'],['📦','Productos','guardados'],['🔨','Subasta','LIVE']];
 buttons.forEach((b,i)=>{
   const [icono,l1,l2]=etiquetas[i];
@@ -2030,7 +2048,7 @@ buttons.forEach((b,i)=>{
 });
 const hojaLocura = document.createElement('link');
 hojaLocura.rel='stylesheet';
-hojaLocura.href='locura-diseno-live.css?v=1';
+hojaLocura.href='locura-diseno-live.css?v=2';
 document.head.append(hojaLocura);
 abrir('guardados');
   
